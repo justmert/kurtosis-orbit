@@ -113,9 +113,6 @@ def parse_input(args):
     
     if "sequencer_address" in orbit_args:
         config.sequencer_address = orbit_args["sequencer_address"]
-    else:
-        # By default, sequencer is the owner
-        config.sequencer_address = config.owner_address
     
     # Parse service configuration
     if "validator_count" in orbit_args:

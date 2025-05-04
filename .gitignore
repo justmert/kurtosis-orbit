@@ -35,3 +35,5 @@ out/
 # Temporary files
 *.log
 *.tmp
+
+repomix-output.txt

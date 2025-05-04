@@ -4,8 +4,6 @@ Token Bridge setup for Kurtosis-Orbit package.
 This module handles the deployment of token bridge contracts between the L1 and L2 chains.
 """
 
-json = import_module("json")
-
 def deploy_token_bridge(plan, orbit_config, l1_output, sequencer_output):
     """
     Deploy token bridge contracts between L1 and L2.
@@ -51,7 +49,7 @@ def deploy_token_bridge(plan, orbit_config, l1_output, sequencer_output):
                 "PRIVATE_KEY": orbit_config.owner_private_key,
                 "CHAIN_ID": str(orbit_config.chain_id)
             }
-        }
+        )
     )
     
     # Wait for the deployment to complete

@@ -20,40 +20,55 @@ def start_ethereum_l1(plan, orbit_config):
     """
     # Configure the Ethereum L1 package
     l1_args = {
-        "network_params": {
-            "preset": "minimal",  # Use minimal preset for fast block times
-            "chain_id": orbit_config.l1_chain_id,
-            "deposit_contract_address": "0x1111111111111111111111111111111111111111",  # Dummy value, not used
-            "seconds_per_slot": 3,  # Fast slots for quicker development
-            "genesis_delay": 10,
-            "max_churn": 8,  # EIP-7514 max validator churn
-            "eth1_follow_distance": 12,  # Shorter distance for dev environment
-            "capella_fork_epoch": 0,  # Enable withdrawals from genesis
-            "deneb_fork_epoch": 0,  # Enable EIP-4844 from genesis
-            "electra_fork_epoch": None
-        },
-        "participants": [
-            {
-                "kind": "el-cl-validator",
-                "el_type": "geth",
-                "cl_type": "lighthouse",
-                "count": 1,
-            }
-        ],
-        "prysm_client_image": "",
-        "geth_client_image": "",
-        "lighthouse_client_image": "",
-        "nimbus_client_image": "",
-        "teku_client_image": "",
-        "mev_boost_image": "",
-        "mev_boost_relay_image": "",
-        "mev_boost_relay_db_image": "",
+    # ────────────────────────────
+    # Network-level configuration
+    # ────────────────────────────
+    "network_params": {
+        # Fast, dev-friendly chain
+        "preset": "minimal",
+        "network_id": str(orbit_config.l1_chain_id),  # Convert to string
+        "deposit_contract_address": "0x1111111111111111111111111111111111111111",
+        "seconds_per_slot": 3,
+        "genesis_delay": 10,
+
+        # Shorter PoW → PoS follow distance for quicker sync
+        "eth1_follow_distance": 12,
+
+        # Forks active from genesis
+        "capella_fork_epoch": 0,
+        "deneb_fork_epoch": 0,
+        "electra_fork_epoch": 18446744073709551615,
+
+        # Number of keys each validator gets (belongs *inside* `network_params`)
         "num_validator_keys_per_node": 64,
-        "global_client_log_level": "info",
-        "wait_for_finalization": False,  # Don't wait for finalization to speed up startup
-        "additional_services": None,
-        "enable_mev": False
-    }
+    },
+
+    # ────────────────────────────
+    # Node fleet
+    # ────────────────────────────
+    "participants": [
+        {
+            "el_type": "geth",
+            "cl_type": "lighthouse",
+            "count": 1,          # single EL/CL pair is fine for local dev
+            # everything else inherits defaults
+        }
+    ],
+
+    # ────────────────────────────
+    # Global toggles
+    # ────────────────────────────
+    "global_log_level": "info",   # spec key is `global_log_level`
+    "wait_for_finalization": False,
+
+    # Disable all the default extras so startup stays snappy
+    # (give an empty *list*, not a dict)
+    "additional_services": [],
+
+    # Turn MEV infra off (spec uses `mev_type`)
+    "mev_type": None,
+}
+
     
     # Start the Ethereum L1 chain
     plan.print("Starting Ethereum L1 node...")
@@ -62,8 +77,8 @@ def start_ethereum_l1(plan, orbit_config):
     ethereum_result = ethereum_package.run(plan, l1_args)
     
     # The ethereum package will return information about the deployed nodes
-    el_client_context = ethereum_result["el_client_context"]
-    cl_client_context = ethereum_result["cl_client_context"]
+    el_client_context = ethereum_result.el_client_context
+    cl_client_context = ethereum_result.cl_client_context
     
     # Get the endpoint for the execution client (Geth)
     el_client_service = el_client_context["services"][0]

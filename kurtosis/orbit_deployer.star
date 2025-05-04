@@ -6,7 +6,6 @@ and starts the Arbitrum Nitro sequencer and validator nodes.
 """
 
 utils = import_module("./utils.star")
-json = import_module("json")
 
 def deploy_orbit_contracts(plan, orbit_config, l1_output):
     """
@@ -59,7 +58,7 @@ def deploy_orbit_contracts(plan, orbit_config, l1_output):
                 "BASE_STAKE": orbit_config.base_stake,
                 "ROLLUP_MODE": orbit_config.rollup_mode
             }
-        )
+        ),
     )
     
     # Wait for the deployment to complete
@@ -192,7 +191,7 @@ def start_sequencer(plan, orbit_config, l1_output, deploy_output):
                     transport_protocol = "TCP"
                 )
             }
-        }
+        ),
     )
     
     # Wait for the sequencer to be ready by querying the RPC
@@ -259,7 +258,7 @@ def start_validator(plan, orbit_config, l1_output, deploy_output, sequencer_outp
                     transport_protocol = "TCP"
                 )
             }
-        }
+        ),
     )
     
     # Wait for the validator to be ready by querying the RPC

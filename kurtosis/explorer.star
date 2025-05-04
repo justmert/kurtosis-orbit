@@ -36,7 +36,7 @@ def start_explorer(plan, orbit_config, sequencer_output):
                     transport_protocol = "TCP"
                 )
             }
-        }
+        ),
     )
     
     # Wait for PostgreSQL to be ready
@@ -90,7 +90,7 @@ def start_explorer(plan, orbit_config, sequencer_output):
                     transport_protocol = "TCP"
                 )
             }
-        }
+        )
     )
     
     # Wait for Blockscout to be ready (this will take a few minutes)
