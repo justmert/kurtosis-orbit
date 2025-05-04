@@ -1,0 +1,75 @@
+name: Release Kurtosis-Orbit
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  test:
+    name: Test Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Install Kurtosis
+        run: |
+          echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+          sudo apt update
+          sudo apt install kurtosis-cli
+      
+      - name: Start Kurtosis Engine
+        run: kurtosis engine start
+      
+      - name: Run Kurtosis-Orbit with Default Config
+        run: |
+          kurtosis run . --enclave-name=test-orbit
+        timeout-minutes: 15
+      
+      - name: Check Services
+        run: |
+          kurtosis enclave inspect test-orbit
+          kurtosis service logs test-orbit orbit-sequencer --max-lines=10
+      
+      - name: Clean Up
+        if: always()
+        run: kurtosis clean -a
+
+  release:
+    name: Create Release
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      
+      - name: Create Release on GitHub
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Kurtosis-Orbit ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+          body: |
+            Kurtosis-Orbit version ${{ env.VERSION }}
+            
+            ## Installation
+            
+            ```
+            kurtosis run github.com/arbitrumfoundation/kurtosis-orbit@${{ github.ref_name }}
+            ```
+            
+            For detailed documentation, see the [GitHub repository](https://github.com/arbitrumfoundation/kurtosis-orbit).
+      
+      - name: Output release URL
+        run: echo "Released at ${{ steps.create_release.outputs.html_url }}"

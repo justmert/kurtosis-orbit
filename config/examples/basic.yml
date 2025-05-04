@@ -1,0 +1,15 @@
+# Basic configuration example for Kurtosis-Orbit
+# This minimal setup focuses on core functionality with low resource usage
+orbit_config:
+  # Chain identifiers
+  chain_name: "BasicOrbitChain"
+  chain_id: 412347
+  
+  # Rollup configuration - simplified for quick startup
+  rollup_mode: "rollup"
+  challenge_period_blocks: 10  # Smaller challenge period for faster development
+  
+  # Services configuration - minimal services
+  validator_count: 0  # No validators to save resources
+  enable_bridge: true
+  enable_explorer: false  # No explorer to save resources

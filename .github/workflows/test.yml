@@ -1,0 +1,40 @@
+name: Test Kurtosis-Orbit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Basic Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Install Kurtosis
+        run: |
+          echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+          sudo apt update
+          sudo apt install kurtosis-cli
+      
+      - name: Start Kurtosis Engine
+        run: kurtosis engine start
+      
+      - name: Run Kurtosis-Orbit with Default Config
+        run: |
+          kurtosis run . --enclave-name=test-orbit
+        timeout-minutes: 15
+      
+      - name: Check Services
+        run: |
+          kurtosis enclave inspect test-orbit
+          # Check if sequencer is running
+          kurtosis service logs test-orbit orbit-sequencer --max-lines=10
+      
+      - name: Clean Up
+        if: always()
+        run: kurtosis clean -a

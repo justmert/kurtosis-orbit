@@ -1,0 +1,32 @@
+# Default configuration for Kurtosis-Orbit
+orbit_config:
+  # Chain identifiers
+  chain_name: "OrbitDevChain"
+  chain_id: 412346
+  l1_chain_id: 1337
+  
+  # Rollup configuration
+  rollup_mode: "rollup"  # Options: "rollup" or "anytrust"
+  challenge_period_blocks: 20
+  stake_token: "0x0000000000000000000000000000000000000000"  # ETH as stake token
+  base_stake: "0x0"
+  
+  # Key management (default key provided for development)
+  # Warning: Do not use this key for production environments
+  owner_private_key: "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
+  
+  # Services configuration
+  validator_count: 1
+  enable_bridge: true
+  enable_explorer: false
+  
+  # Docker images
+  nitro_image: "offchainlabs/nitro-node:v3.5.5-90ee45c"
+  
+  # Optional prefunding - addresses to prefund with ETH on L1
+  prefund_addresses: []
+  
+  # AnyTrust specific configuration (only used if rollup_mode is "anytrust")
+  anytrust_config:
+    enable_local_das: true
+    das_members: []
