@@ -45,10 +45,8 @@ def run(plan, args={}):
     deploy_output = orbit_deployer.deploy_orbit_contracts(plan, orbit_config, l1_output)
     
     # Phase 3: Start Arbitrum Nitro Sequencer Node
-    plan.print("Step 3: Starting Nitro Sequencer (stubbed)...")
     sequencer_output = orbit_deployer.start_sequencer(plan, orbit_config, l1_output, deploy_output)
-    plan.print("Sequencer started")
-
+  
     # Phase 4: Use stubbed token bridge
     plan.print("Step 4: Deploying token bridge (stubbed)...")
     if orbit_config.enable_bridge:
@@ -62,8 +60,6 @@ def run(plan, args={}):
         explorer_output = explorer.start_explorer(plan, orbit_config, sequencer_output)
         plan.print("Explorer started")
 
-    # # Phase 3: Start Arbitrum Nitro Sequencer Node
-    # sequencer_output = orbit_deployer.start_sequencer(plan, orbit_config, l1_output, deploy_output)
     
     # # Phase 4: Start Arbitrum Nitro Validator Node(s)
     # validator_outputs = []
