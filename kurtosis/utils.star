@@ -6,7 +6,7 @@ This module provides helper functions used across different components of the pa
 
 def wait_for_http_endpoint(plan, endpoint, request_body=None, timeout="120s"):
     """
-    Wait for an HTTP endpoint to become available.
+    Wait for an HTTP endpoint to become available using curl.
     
     Args:
         plan: The Kurtosis execution plan
@@ -14,34 +14,48 @@ def wait_for_http_endpoint(plan, endpoint, request_body=None, timeout="120s"):
         request_body: Optional JSON body to send in the request
         timeout: Maximum time to wait before giving up
     """
+    plan.print("Waiting for endpoint to be available: " + endpoint)
+    
+    # Create a temporary service to run curl
+    curl_service = plan.add_service(
+        name = "curl-checker",
+        config = ServiceConfig(
+            image = "curlimages/curl:latest",
+            entrypoint = ["/bin/sh", "-c"],
+            cmd = ["tail -f /dev/null"]  # Keep container running
+        )
+    )
+    
+    # Build the curl command
+    curl_cmd = []
     if request_body:
-        # Use HTTP POST with body
-        plan.wait(
-            recipe = PostHttpRequestRecipe(
-                port_id = "",
-                endpoint = endpoint,
-                content_type = "application/json",
-                body = request_body,
-                extract = {},
-            ),
-            field = "code",
-            assertion = "==",
-            target_value = 200,
-            timeout = timeout
-        )
+        # For POST requests with a body
+        curl_cmd = [
+            "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", 
+            "-X", "POST", "-H", "Content-Type: application/json",
+            "-d", request_body, endpoint
+        ]
     else:
-        # Use simple HTTP GET
-        plan.wait(
-            recipe = GetHttpRequestRecipe(
-                port_id = "",
-                endpoint = endpoint,
-                extract = {},
-            ),
-            field = "code",
-            assertion = "==",
-            target_value = 200,
-            timeout = timeout
-        )
+        # For GET requests
+        curl_cmd = [
+            "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", 
+            endpoint
+        ]
+    
+    # Wait for the endpoint to return 200
+    plan.wait(
+        service_name = "curl-checker",
+        recipe = ExecRecipe(command = curl_cmd),
+        field = "output",
+        assertion = "==",
+        target_value = "200",
+        interval = "5s",
+        timeout = timeout
+    )
+    
+    # Clean up the temporary service
+    plan.remove_service(name = "curl-checker")
+    
 
 def derive_address_from_private_key(plan, private_key):
     """

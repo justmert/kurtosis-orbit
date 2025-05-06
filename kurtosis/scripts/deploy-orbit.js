@@ -4,6 +4,19 @@
  * This script uses the Arbitrum Orbit SDK to deploy an Orbit chain's core contracts
  * to the parent chain (Ethereum L1 in this case) and generate the chain configuration.
  */
+console.log("Starting deployment script...");
+
+// Create a simple error handler that writes to a file
+process.on('uncaughtException', (err) => {
+  console.error('FATAL ERROR:', err);
+  require('fs').writeFileSync('/app/deployment-result.json', JSON.stringify({
+      success: false,
+      error: err.message,
+      stack: err.stack
+  }, null, 2));
+  process.exit(1);
+});
+
 
 const { ethers } = require('ethers');
 const fs = require('fs');
@@ -193,3 +206,7 @@ async function main() {
 }
 
 main();
+
+// At the end of the script
+console.log("Deployment script completed successfully");
+

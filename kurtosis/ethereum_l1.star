@@ -73,38 +73,45 @@ def start_ethereum_l1(plan, orbit_config):
     # Start the Ethereum L1 chain
     plan.print("Starting Ethereum L1 node...")
     
-    # Run the Ethereum package
     ethereum_result = ethereum_package.run(plan, l1_args)
-    
-    # The ethereum package will return information about the deployed nodes
-    el_client_context = ethereum_result.el_client_context
-    cl_client_context = ethereum_result.cl_client_context
-    
-    # Get the endpoint for the execution client (Geth)
-    el_client_service = el_client_context["services"][0]
-    rpc_port = el_client_service["rpc_port"]
-    ws_port = el_client_service["ws_port"]
-    
-    # Construct service names based on Ethereum package's naming convention
-    el_service_name = "el-1-geth-lighthouse"
-    
-    # Build full RPC URLs
-    rpc_endpoint = "http://" + el_service_name + ":" + str(rpc_port)
-    ws_endpoint = "ws://" + el_service_name + ":" + str(ws_port)
-    
-    # Wait for the Ethereum node to be ready
-    utils.wait_for_http_endpoint(plan, rpc_endpoint, '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}')
-    
-    # Get the private key for the prefunded account
-    # The ethereum-package automatically funds some accounts - we'll use the first one
-    # This is usually the same as our default key for convenience
-    
-    plan.print("Ethereum L1 node is ready")
-    plan.print("RPC endpoint: " + rpc_endpoint)
+
+    # ---------- compatibility layer ----------
+    def _first(lst):  # tiny helper
+        return lst[0] if len(lst) > 0 else None
+
+    result_keys = dir(ethereum_result)
+
+    # v1/v2 (legacy – top-level context)
+    if "el_client_context" in result_keys:
+        el_ctxs = [ethereum_result.el_client_context]
+        cl_ctxs = [getattr(ethereum_result, "cl_client_context", None)]
+
+    # v3+ (context lives on each participant)
+    elif "all_participants" in result_keys:
+        el_ctxs = [p.el_context        for p in ethereum_result.all_participants
+                                        if hasattr(p, "el_context")]
+        cl_ctxs = [p.cl_context        for p in ethereum_result.all_participants
+                                        if hasattr(p, "cl_context")]
+    else:
+        fail("Unknown ethereum-package output shape: %s" % result_keys)
+
+    if len(el_ctxs) == 0:
+        fail("No execution-layer context found in package output.")
+
+    # Pick the first EL/CL node for now (Kurtosis names are deterministic)
+    el_ctx = _first(el_ctxs)
+    cl_ctx = _first(cl_ctxs)   # may be None if you don’t need it
+
+    rpc_http_url = el_ctx.rpc_http_url   # http://…:8545
+    ws_url       = getattr(el_ctx, "ws_url", "")  # if you need WS
+    # ------------------------------------------
+
+    plan.print("Ethereum L1 ready – RPC: %s" % rpc_http_url)
+    plan.print("RPC endpoint: " + rpc_http_url)
     
     return struct(
-        rpc_endpoint = rpc_endpoint,
-        ws_endpoint = ws_endpoint,
+        rpc_endpoint = rpc_http_url,
+        ws_endpoint = ws_url,
         chain_id = orbit_config.l1_chain_id,
         funded_private_key = orbit_config.owner_private_key
     )

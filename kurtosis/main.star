@@ -45,18 +45,36 @@ def run(plan, args={}):
     deploy_output = orbit_deployer.deploy_orbit_contracts(plan, orbit_config, l1_output)
     
     # Phase 3: Start Arbitrum Nitro Sequencer Node
+    plan.print("Step 3: Starting Nitro Sequencer (stubbed)...")
     sequencer_output = orbit_deployer.start_sequencer(plan, orbit_config, l1_output, deploy_output)
-    
-    # Phase 4: Start Arbitrum Nitro Validator Node(s)
-    validator_outputs = []
-    if orbit_config.validator_count > 0:
-        for i in range(orbit_config.validator_count):
-            validator_output = orbit_deployer.start_validator(plan, orbit_config, l1_output, deploy_output, sequencer_output, i)
-            validator_outputs.append(validator_output)
-    
-    # Phase 5: Deploy Token Bridge
+    plan.print("Sequencer started")
+
+    # Phase 4: Use stubbed token bridge
+    plan.print("Step 4: Deploying token bridge (stubbed)...")
     if orbit_config.enable_bridge:
         bridge_output = token_bridge.deploy_token_bridge(plan, orbit_config, l1_output, sequencer_output)
+        plan.print("Token bridge deployed")
+
+    # Phase 5: Explorer is stubbed as well
+    explorer_output = None
+    if orbit_config.enable_explorer:
+        plan.print("Step 5: Starting explorer (stubbed)...")
+        explorer_output = explorer.start_explorer(plan, orbit_config, sequencer_output)
+        plan.print("Explorer started")
+
+    # # Phase 3: Start Arbitrum Nitro Sequencer Node
+    # sequencer_output = orbit_deployer.start_sequencer(plan, orbit_config, l1_output, deploy_output)
+    
+    # # Phase 4: Start Arbitrum Nitro Validator Node(s)
+    # validator_outputs = []
+    # if orbit_config.validator_count > 0:
+    #     for i in range(orbit_config.validator_count):
+    #         validator_output = orbit_deployer.start_validator(plan, orbit_config, l1_output, deploy_output, sequencer_output, i)
+    #         validator_outputs.append(validator_output)
+    
+    # # Phase 5: Deploy Token Bridge
+    # if orbit_config.enable_bridge:
+    #     bridge_output = token_bridge.deploy_token_bridge(plan, orbit_config, l1_output, sequencer_output)
     
     # Phase 6: Start Block Explorer (if enabled)
     explorer_output = None
