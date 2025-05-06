@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  # Rollup creator service for deploying Orbit chain
+  rollupcreator:
+    build:
+      context: ./rollupcreator
+      args:
+        NITRO_CONTRACTS_BRANCH: ${NITRO_CONTRACTS_BRANCH:-v2.1.1-beta.0}
+    volumes:
+      - ./config:/config
+    environment:
+      - PARENT_CHAIN_RPC=${L1_RPC_URL}
+      - DEPLOYER_PRIVKEY=${DEPLOYER_PRIVKEY}
+      - PARENT_CHAIN_ID=${L1_CHAIN_ID:-1337}
+      - CHILD_CHAIN_NAME=${CHAIN_NAME}
+      - MAX_DATA_SIZE=117964
+      - OWNER_ADDRESS=${OWNER_ADDRESS}
+      - SEQUENCER_ADDRESS=${SEQUENCER_ADDRESS}
+      - CHILD_CHAIN_CONFIG_PATH=/config/rollup_config.json
+      - CHAIN_DEPLOYMENT_INFO=/config/deployment.json
+      - CHILD_CHAIN_INFO=/config/chain_info.json
+
+  # Token bridge deployer
+  tokenbridge:
+    build:
+      context: ./tokenbridge
+      args:
+        TOKEN_BRIDGE_BRANCH: ${TOKEN_BRIDGE_BRANCH:-v1.2.2}
+    environment:
+      - L1_RPC_URL=${L1_RPC_URL}
+      - L2_RPC_URL=${L2_RPC_URL}
+      - L1_PRIVATE_KEY=${OWNER_PRIVATE_KEY}
+      - L2_PRIVATE_KEY=${OWNER_PRIVATE_KEY}
+      - ROLLUP_ADDRESS=${ROLLUP_ADDRESS}
+    volumes:
+      - ./config:/config

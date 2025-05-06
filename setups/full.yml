@@ -1,0 +1,42 @@
+# Full configuration for kurtosis-orbit with all available options
+# This configuration demonstrates all possible settings for an Arbitrum Orbit chain
+
+# L1 Configuration
+l1_chain_id: 1337
+
+# L2 Configuration
+l2_chain_id: 421613
+l2_chain_name: "orbit-full-featured"
+
+# Rollup Configuration
+rollup_mode: "rollup"  # "rollup" or "anytrust"
+challenge_period_blocks: 20
+
+# If using "anytrust" mode, you can configure the Data Availability Committee
+# Uncomment this section to enable AnyTrust mode
+# das_config:
+#   enable_local_das: true
+#   das_member_key: null  # If null, a key will be generated automatically
+
+# Stake Token Configuration (optional)
+# If not provided, ETH will be used as the stake token
+# stake_token: "0x123..."  # L1 address of token to use for staking
+# base_stake: 1000000000000000000  # Minimum stake amount (in wei)
+
+# Services Configuration
+token_bridge: true
+explorer: true
+validator_count: 2
+
+# Owner Account (if not provided, a default development key will be used)
+# WARNING: The default key should not be used in production
+# owner_private_key: "your-private-key-here"
+
+# Docker Images (optional)
+nitro_image: "offchainlabs/nitro-node:v3.5.5-90ee45c"
+blockscout_image: "offchainlabs/blockscout:v1.1.0-0e716c8"
+
+# Pre-fund these addresses with ETH on L1 and L2
+prefund_addresses:
+  - "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+  - "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199"
