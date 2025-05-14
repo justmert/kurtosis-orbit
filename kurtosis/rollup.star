@@ -48,13 +48,14 @@ def deploy_rollup_contracts(plan, config, l1_info):
     )
 
 
+    # Extract the WASM module root and properly trim it
     wasm_root_result = plan.run_sh(
-        run="sh -c 'cat /home/user/target/machines/latest/module-root.txt || echo \"0x0100000000000000000000000000000000000000000000000000000000000000\"'",
+        run="sh -c 'cat /home/user/target/machines/latest/module-root.txt | tr -d \"\\n\"'",
         image="offchainlabs/nitro-node:v3.5.5-90ee45c"
     )
 
     wasm_module_root = wasm_root_result.output.strip()
-    plan.print("Extracted WASM module root: " + wasm_module_root)
+    plan.print("Extracted WASM module root (trimmed): " + wasm_module_root)
 
     # Deploy the service using the artifact
     deployer_service = plan.add_service(
@@ -107,7 +108,9 @@ def deploy_rollup_contracts(plan, config, l1_info):
                 "echo 'Giving L1 a final moment to stabilize...' && " +
                 "sleep 5 && " +
                 "echo 'Proceeding with deployment' && " +
-                "mkdir -p /config && cp /rollup/rollup_config.json /config/ && yarn create-rollup-testnode"
+                "mkdir -p /config && cp /rollup/rollup_config.json /config/ && yarn create-rollup-testnode && "  +
+                "echo 'Deployment complete! Files created:' && ls -l /config/deployment.json /config/chain_info.json && " +
+                "tail -f /dev/null"
             ],
             files={
                 "/rollup": config_template,  # Mount the template files to /rollup
@@ -130,22 +133,23 @@ def deploy_rollup_contracts(plan, config, l1_info):
         ),
     )    
     
-
-    # Then use this instead of the file-check wait
+    # Wait directly for the deployment files to be created
     plan.wait(
         service_name="orbit-deployer",
-        recipe=ExecRecipe(command=["echo", "Checking service status"]),
+        recipe=ExecRecipe(
+            command=["sh", "-c", "test -f /config/deployment.json && test -f /config/chain_info.json"]
+        ),
         field="code",
         assertion="==",
         target_value=0,
-        timeout="5m",
+        timeout="10m",  # Keep a reasonable timeout
     )
-    
-    # Verify files exist after service completes
+
+    # Optionally print the deployment info summary
     plan.exec(
-        service_name="orbit-deployer",  # Use a service that can access the same files
+        service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "test -f /config/deployment.json && test -f /config/chain_info.json || echo 'ERROR: Deployment files not found!'"]
+            command=["sh", "-c", "echo 'Deployment complete! Files created:' && ls -l /config/deployment.json /config/chain_info.json"]
         )
     )
 
@@ -163,7 +167,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
         name="chain-info",
     )
     
-    # Extract important values from deployment.json
+    # Extract important values from deployment.json (with corrected field names)
     rollup_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
@@ -171,7 +175,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
         ),
     )
     rollup_address = rollup_address_result["output"].strip()
-    
+
     bridge_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
@@ -179,7 +183,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
         ),
     )
     bridge_address = bridge_address_result["output"].strip()
-    
+
     inbox_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
@@ -187,47 +191,58 @@ def deploy_rollup_contracts(plan, config, l1_info):
         ),
     )
     inbox_address = inbox_address_result["output"].strip()
-    
+
     sequencer_inbox_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.sequencerInbox'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"sequencer-inbox\"'"]
         ),
     )
     sequencer_inbox_address = sequencer_inbox_address_result["output"].strip()
-    
+
     validator_utils_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.validatorUtils'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"validator-utils\"'"]
         ),
     )
     validator_utils_address = validator_utils_address_result["output"].strip()
-    
+
     validator_wallet_creator_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.validatorWalletCreator'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"validator-wallet-creator\"'"]
         ),
     )
     validator_wallet_creator_address = validator_wallet_creator_address_result["output"].strip()
-    
+
     deployed_block_num_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.deployedBlockNumber'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"deployed-at\"'"]
         ),
     )
     deployed_block_num = deployed_block_num_result["output"].strip()
-    
-    deployed_block_hash_result = plan.exec(
+
+    # Note: deployedBlockHash doesn't exist in the JSON, using empty string or null
+    deployed_block_hash = ""
+
+    # Optional: Extract additional fields that are in the JSON but weren't captured before
+    upgrade_executor_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.deployedBlockHash'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"upgrade-executor\"'"]
         ),
     )
-    deployed_block_hash = deployed_block_hash_result["output"].strip()
-    
+    upgrade_executor = upgrade_executor_result["output"].strip()
+
+    native_token_result = plan.exec(
+        service_name="orbit-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"native-token\"'"]
+        ),
+    )
+    native_token = native_token_result["output"].strip()    
     # Return the deployment information
     return {
         "artifacts": {
@@ -241,7 +256,9 @@ def deploy_rollup_contracts(plan, config, l1_info):
         "validator_utils_address": validator_utils_address,
         "validator_wallet_creator_address": validator_wallet_creator_address,
         "deployed_block_num": deployed_block_num,
-        "deployed_block_hash": deployed_block_hash,
+        "deployed_block_hash": deployed_block_hash,  # Will be empty string
         "owner_address": config.owner_address,
         "sequencer_address": config.sequencer_address,
+        "upgrade_executor": upgrade_executor,  # New field
+        "native_token": native_token,  # New field
     }
