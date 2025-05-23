@@ -27,7 +27,7 @@ STANDARD_ACCOUNTS = {
         "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
     },
     "l2owner": {
-        "private_key": "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
+        "private_key":"92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
         "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9"
     },
     "auctioneer": {
@@ -66,7 +66,7 @@ DEFAULT_CONFIG = {
     "validator_count": 1,
     "batch_poster_count": 0,  # Only used if simple_mode is False
     "enable_bridge": True,
-    "enable_explorer": False,
+    "enable_explorer": True,
     
     # Pre-fund these accounts in L1 genesis (matches nitro-testnode)
     "pre_fund_accounts": ["funnel", "sequencer", "validator", "l2owner", "auctioneer"],

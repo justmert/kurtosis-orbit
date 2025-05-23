@@ -24,9 +24,3 @@ RUN git clone --no-checkout https://github.com/OffchainLabs/token-bridge-contrac
 # Install dependencies and build
 RUN yarn install && yarn cache clean
 RUN yarn build
-
-# Copy the deployment script
-COPY deploy-token-bridge.sh /workspace/deploy-token-bridge.sh
-RUN chmod +x /workspace/deploy-token-bridge.sh
-
-# No entrypoint - allows running any command directly

@@ -202,11 +202,11 @@ def deploy_rollup_contracts(plan, config, l1_info):
         name="chain-info",
     )
     
-    # Extract important values from deployment.json (with corrected field names)
+    # Extract important values from deployment.json with guaranteed clean output
     rollup_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.rollup'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.rollup' | tr -d '\\n\\r' | xargs"]
         ),
     )
     rollup_address = rollup_address_result["output"].strip()
@@ -214,7 +214,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
     bridge_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.bridge'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.bridge' | tr -d '\\n\\r' | xargs"]
         ),
     )
     bridge_address = bridge_address_result["output"].strip()
@@ -222,7 +222,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
     inbox_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.inbox'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.inbox' | tr -d '\\n\\r' | xargs"]
         ),
     )
     inbox_address = inbox_address_result["output"].strip()
@@ -230,7 +230,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
     sequencer_inbox_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"sequencer-inbox\"'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"sequencer-inbox\"' | tr -d '\\n\\r' | xargs"]
         ),
     )
     sequencer_inbox_address = sequencer_inbox_address_result["output"].strip()
@@ -238,7 +238,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
     validator_utils_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"validator-utils\"'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"validator-utils\"' | tr -d '\\n\\r' | xargs"]
         ),
     )
     validator_utils_address = validator_utils_address_result["output"].strip()
@@ -246,7 +246,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
     validator_wallet_creator_address_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"validator-wallet-creator\"'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"validator-wallet-creator\"' | tr -d '\\n\\r' | xargs"]
         ),
     )
     validator_wallet_creator_address = validator_wallet_creator_address_result["output"].strip()
@@ -254,19 +254,15 @@ def deploy_rollup_contracts(plan, config, l1_info):
     deployed_block_num_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"deployed-at\"'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"deployed-at\"' | tr -d '\\n\\r' | xargs"]
         ),
     )
     deployed_block_num = deployed_block_num_result["output"].strip()
 
-    # Note: deployedBlockHash doesn't exist in the JSON, using empty string or null
-    deployed_block_hash = ""
-
-    # Optional: Extract additional fields that are in the JSON but weren't captured before
     upgrade_executor_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"upgrade-executor\"'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"upgrade-executor\"' | tr -d '\\n\\r' | xargs"]
         ),
     )
     upgrade_executor = upgrade_executor_result["output"].strip()
@@ -274,10 +270,12 @@ def deploy_rollup_contracts(plan, config, l1_info):
     native_token_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"native-token\"'"]
+            command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"native-token\"' | tr -d '\\n\\r' | xargs"]
         ),
     )
+    native_token = native_token_result["output"].strip()
 
+    # Extract the complete chain_info.json content (this is JSON, so we need to preserve structure)
     chain_result = plan.exec(
         service_name="orbit-deployer",
         recipe=ExecRecipe(
@@ -285,10 +283,6 @@ def deploy_rollup_contracts(plan, config, l1_info):
         ),
     )
     chain_info = chain_result["output"].strip()
-    
-    bridge_address = bridge_address_result["output"].strip()
-
-    native_token = native_token_result["output"].strip()    
     # Return the deployment information
     return {
         "artifacts": {
@@ -303,7 +297,6 @@ def deploy_rollup_contracts(plan, config, l1_info):
         "validator_utils_address": validator_utils_address,
         "validator_wallet_creator_address": validator_wallet_creator_address,
         "deployed_block_num": deployed_block_num,
-        "deployed_block_hash": deployed_block_hash,  # Will be empty string
         "owner_address": config.owner_address,
         "sequencer_address": config.sequencer_address,
         "upgrade_executor": upgrade_executor,  # New field

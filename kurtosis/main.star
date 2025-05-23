@@ -57,7 +57,7 @@ def run(plan, args={}):
     output = {
         "ethereum_l1": l1_info,
         "arbitrum_l2": nodes_info,
-        "token_bridge": bridge_info,
+        # "token_bridge": bridge_info,
         "explorer": explorer_info,
         "chain_info": {
             "name": config.chain_name,
