@@ -19,6 +19,36 @@ def deploy_rollup_contracts(plan, config, l1_info):
     
     plan.print("Deploying Arbitrum Orbit rollup contracts on L1...")
     
+    # Create L2 chain configuration first (following nitro-testnode pattern)
+    l2_chain_config = {
+        "chainId": config.chain_id,
+        "homesteadBlock": 0,
+        "daoForkSupport": True,
+        "eip150Block": 0,
+        "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "eip155Block": 0,
+        "eip158Block": 0,
+        "byzantiumBlock": 0,
+        "constantinopleBlock": 0,
+        "petersburgBlock": 0,
+        "istanbulBlock": 0,
+        "muirGlacierBlock": 0,
+        "berlinBlock": 0,
+        "londonBlock": 0,
+        "clique": {
+            "period": 0,
+            "epoch": 0
+        },
+        "arbitrum": {
+            "EnableArbOS": True,
+            "AllowDebugPrecompiles": True,
+            "DataAvailabilityCommittee": not config.rollup_mode,  # True for anytrust, False for rollup
+            "InitialArbOSVersion": 32,  # Use version 32 like nitro-testnode
+            "InitialChainOwner": config.owner_address,
+            "GenesisBlockNum": 0
+        }
+    }
+    
     # Prepare rollup configuration
     rollup_config = {
         "chainId": config.chain_id,
@@ -33,15 +63,20 @@ def deploy_rollup_contracts(plan, config, l1_info):
         "dataAvailabilityMode": "rollup" if config.rollup_mode else "anytrust"
     }
     
-    # In rollup.star
+    # Convert configurations to JSON
     rollup_config_json = json.encode(rollup_config)
+    l2_chain_config_json = json.encode(l2_chain_config)
 
-    # Create a file artifact using render_templates
+    # Create file artifacts using render_templates
     config_template = plan.render_templates(
         name="rollup-config",
         config={
             "rollup_config.json": struct(
                 template=rollup_config_json,
+                data={},
+            ),
+            "l2_chain_config.json": struct(
+                template=l2_chain_config_json,
                 data={},
             ),
         },
@@ -108,7 +143,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
                 "echo 'Giving L1 a final moment to stabilize...' && " +
                 "sleep 5 && " +
                 "echo 'Proceeding with deployment' && " +
-                "mkdir -p /config && cp /rollup/rollup_config.json /config/ && yarn create-rollup-testnode && "  +
+                "mkdir -p /config && cp /rollup/rollup_config.json /config/ && cp /rollup/l2_chain_config.json /config/ && yarn create-rollup-testnode && "  +
                 "echo 'Deployment complete! Files created:' && ls -l /config/deployment.json /config/chain_info.json && " +
                 "tail -f /dev/null"
             ],
@@ -124,7 +159,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
                 "OWNER_ADDRESS": config.owner_address,
                 "SEQUENCER_ADDRESS": config.sequencer_address,
                 "AUTHORIZE_VALIDATORS": "10",
-                "CHILD_CHAIN_CONFIG_PATH": "/config/rollup_config.json",
+                "CHILD_CHAIN_CONFIG_PATH": "/config/l2_chain_config.json",  # Use the L2 chain config
                 "CHAIN_DEPLOYMENT_INFO": "/config/deployment.json",
                 "CHILD_CHAIN_INFO": "/config/chain_info.json",
                 # Add this critical parameter

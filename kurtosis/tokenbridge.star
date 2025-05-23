@@ -1,14 +1,12 @@
 """
 Token bridge deployment module for Kurtosis-Orbit.
 This module handles the deployment of the token bridge between L1 and L2.
+Based on nitro-testnode token bridge deployment pattern.
 """
-
-# Default private key for development
-DEV_PRIVATE_KEY = "b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659"
 
 def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
     """
-    Deploy token bridge contracts between L1 and L2
+    Deploy token bridge contracts between L1 and L2 using the official token-bridge-contracts
     
     Args:
         plan: The Kurtosis execution plan
@@ -20,174 +18,146 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
     Returns:
         Dictionary with token bridge information
     """
-    plan.print("Deploying token bridge between L1 and L2...")
+    plan.print("Deploying L1-L2 token bridge using token-bridge-contracts...")
     
-    # Create token bridge deployment script
-    deploy_bridge_script = """
-    const fs = require('fs');
-    const { ethers } = require('ethers');
-    
-    async function main() {
-      console.log('Deploying token bridge between L1 and L2...');
-      
-      // Connect to L1
-      const l1Provider = new ethers.providers.JsonRpcProvider(process.env.L1_RPC_URL);
-      const l1Signer = new ethers.Wallet(process.env.L1_PRIVKEY, l1Provider);
-      
-      // Connect to L2
-      const l2Provider = new ethers.providers.JsonRpcProvider(process.env.L2_RPC_URL);
-      const l2Signer = new ethers.Wallet(process.env.L2_PRIVKEY, l2Provider);
-
-      // Get the rollup address
-      const rollupAddress = process.env.ROLLUP_ADDRESS;
-      console.log('Rollup address:', rollupAddress);
-      
-      // Deploy token bridge contracts
-      console.log('Deploying L1 token gateway...');
-      // ... deployment code for L1 gateway
-      
-      console.log('Deploying L2 token gateway...');
-      // ... deployment code for L2 gateway
-      
-      // For this demo, we'll just pretend the contracts are deployed
-      const bridgeInfo = {
-        l1: {
-          gateway: "0x096760F208390250649E3e8763348E783AEF5562",
-          router: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380",
-        },
-        l2: {
-          gateway: "0x09e9222E96E7B4AE2a407B98d48e330053351EEe",
-          router: "0x195A9262fC61F9637887E5D2C352a9c7642ea5EA",
-        }
-      };
-      
-      // Write bridge info to file
-      fs.writeFileSync('/config/bridge_info.json', JSON.stringify(bridgeInfo, null, 2));
-      
-      console.log('Token bridge deployed successfully!');
-    }
-    
-    main()
-      .then(() => process.exit(0))
-      .catch(error => {
-        console.error(error);
-        process.exit(1);
-      });
-    """
-    
-    # Create package.json for the bridge deployment script
-    bridge_package_json = {
-        "name": "token-bridge-deployer",
-        "version": "1.0.0",
-        "private": True,
-        "main": "deploy_bridge.js",
-        "dependencies": {
-            "ethers": "^5.7.2"
-        }
-    }
-    
-    # Write bridge deployment script to a file
-    bridge_script_artifact = plan.render_templates(
-        config={
-            "/deploy_bridge.js": struct(
-                template=deploy_bridge_script,
-                data={},
-            ),
-        },
-        name="bridge-deploy-script",
-    )
-    
-    # Write package.json to a file
-    bridge_package_json_str = json.encode(bridge_package_json)
-    bridge_package_json_artifact = plan.render_templates(
-        config={
-            "/package.json": struct(
-                template="{bridge_package_json}",
-                data={"bridge_package_json": bridge_package_json_str},
-            ),
-        },
-        name="bridge-package-json",
-    )
-    
-    # Create a container to deploy the token bridge
+    # Deploy the token bridge using the official token-bridge-contracts approach
+    # This follows the same pattern as nitro-testnode
     bridge_deployer = plan.add_service(
         name="token-bridge-deployer",
         config=ServiceConfig(
-            image="node:18",
-            env_vars={
-                "L1_RPC_URL": l1_info["rpc_url"],
-                "L2_RPC_URL": nodes_info["sequencer"]["rpc_url"],
-                "L1_PRIVKEY": config.owner_private_key if hasattr(config, 'owner_private_key') else DEV_PRIVATE_KEY,
-                "L2_PRIVKEY": config.owner_private_key if hasattr(config, 'owner_private_key') else DEV_PRIVATE_KEY,
-                "ROLLUP_ADDRESS": rollup_info["rollup_address"],
-            },
+            image=ImageBuildSpec(
+                image_name="tokenbridge",
+                build_context_dir="./tokenbridge",
+                build_args={
+                    "TOKEN_BRIDGE_BRANCH": config.token_bridge_branch if hasattr(config, 'token_bridge_branch') else "v1.2.2"
+                }
+            ),
             cmd=[
-                "bash", "-c",
-                "cd /app && npm install && node deploy_bridge.js"
+                "deploy:local:token-bridge"
             ],
+            env_vars={
+                # Environment variables following nitro-testnode pattern
+                "ROLLUP_OWNER_KEY": config.owner_private_key,
+                "ROLLUP_ADDRESS": rollup_info["rollup_address"],
+                "PARENT_KEY": config.owner_private_key,  # Using owner key for parent chain
+                "PARENT_RPC": l1_info["rpc_url"],
+                "CHILD_KEY": config.owner_private_key,   # Using owner key for child chain
+                "CHILD_RPC": nodes_info["sequencer"]["rpc_url"],
+            },
+            # Add volume to persist the network.json and other output files
             files={
-                "/app/package.json": bridge_package_json_artifact,
-                "/app/deploy_bridge.js": bridge_script_artifact,
+                "/workspace": ".",  # This will be the working directory in the container
             },
         ),
     )
     
-    # Wait for deployment to complete and store bridge information
+    # Wait for the deployment to complete
+    # The token bridge deployment creates network.json and other files
     plan.wait(
         service_name="token-bridge-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "[ -f /config/bridge_info.json ]"]
+            command=["sh", "-c", "test -f network.json"]
         ),
         field="code",
         assertion="==",
         target_value=0,
-        timeout="5m",  # Deployment can take some time
+        timeout="10m",  # Token bridge deployment can take time
     )
     
-    # Store bridge information as an artifact
-    bridge_info_artifact = plan.store_service_files(
+    # Copy the network configuration files
+    plan.exec(
         service_name="token-bridge-deployer",
-        src="/config/bridge_info.json",
-        name="bridge-info",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cp network.json l1l2_network.json && cp network.json localNetwork.json"]
+        )
     )
-
-    # Instead of trying to parse the future reference directly,
-    # use placeholder values and just return the artifact
+    
+    # Store the network configuration as artifacts
+    network_artifact = plan.store_service_files(
+        service_name="token-bridge-deployer",
+        src="network.json",
+        name="token-bridge-network",
+    )
+    
+    l1l2_network_artifact = plan.store_service_files(
+        service_name="token-bridge-deployer",
+        src="l1l2_network.json", 
+        name="l1l2-network",
+    )
+    
+    # Extract key addresses from the network.json file
+    l1_gateway_result = plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat network.json | jq -r '.l1Network.tokenBridge.l1ERC20Gateway'"]
+        ),
+    )
+    l1_gateway = l1_gateway_result["output"].strip()
+    
+    l1_router_result = plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat network.json | jq -r '.l1Network.tokenBridge.l1GatewayRouter'"]
+        ),
+    )
+    l1_router = l1_router_result["output"].strip()
+    
+    l2_gateway_result = plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat network.json | jq -r '.l2Network.tokenBridge.l2ERC20Gateway'"]
+        ),
+    )
+    l2_gateway = l2_gateway_result["output"].strip()
+    
+    l2_router_result = plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat network.json | jq -r '.l2Network.tokenBridge.l2GatewayRouter'"]
+        ),
+    )
+    l2_router = l2_router_result["output"].strip()
+    
+    l1_weth_result = plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat network.json | jq -r '.l1Network.tokenBridge.l1Weth'"]
+        ),
+    )
+    l1_weth = l1_weth_result["output"].strip()
+    
+    l2_weth_result = plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat network.json | jq -r '.l2Network.tokenBridge.l2Weth'"]
+        ),
+    )
+    l2_weth = l2_weth_result["output"].strip()
+    
+    plan.print("Token bridge deployed successfully!")
+    plan.print("L1 Gateway: " + l1_gateway)
+    plan.print("L1 Router: " + l1_router)
+    plan.print("L2 Gateway: " + l2_gateway)
+    plan.print("L2 Router: " + l2_router)
+    
+    # Return the token bridge information
     return {
         "artifacts": {
-            "bridge_info": bridge_info_artifact,
+            "network": network_artifact,
+            "l1l2_network": l1l2_network_artifact,
         },
-        # Use placeholder values or extract individual fields via exec if needed
         "l1": {
-            "gateway": plan.exec(
-                service_name="token-bridge-deployer",
-                recipe=ExecRecipe(
-                    command=["sh", "-c", "cat /config/bridge_info.json | jq -r '.l1.gateway'"]
-                ),
-                acceptable_codes=[0],
-            )["output"],
-            "router": plan.exec(
-                service_name="token-bridge-deployer",
-                recipe=ExecRecipe(
-                    command=["sh", "-c", "cat /config/bridge_info.json | jq -r '.l1.router'"]
-                ),
-                acceptable_codes=[0],
-            )["output"],
+            "gateway": l1_gateway,
+            "router": l1_router,
+            "weth": l1_weth,
         },
         "l2": {
-            "gateway": plan.exec(
-                service_name="token-bridge-deployer",
-                recipe=ExecRecipe(
-                    command=["sh", "-c", "cat /config/bridge_info.json | jq -r '.l2.gateway'"]
-                ),
-                acceptable_codes=[0],
-            )["output"],
-            "router": plan.exec(
-                service_name="token-bridge-deployer",
-                recipe=ExecRecipe(
-                    command=["sh", "-c", "cat /config/bridge_info.json | jq -r '.l2.router'"]
-                ),
-                acceptable_codes=[0],
-            )["output"],
+            "gateway": l2_gateway,
+            "router": l2_router,
+            "weth": l2_weth,
         },
+        "network_info": {
+            "l1_chain_id": l1_info.get("chain_id", 1337),
+            "l2_chain_id": config.chain_id,
+        }
     }
