@@ -1,20 +1,17 @@
 """
-Kurtosis-Orbit: Main implementation file for Arbitrum Orbit deployment.
-This file orchestrates the deployment of all components of an Arbitrum Orbit stack.
+Kurtosis-Orbit: Production-ready Arbitrum Orbit deployment package.
+Provides one-command deployment of complete Arbitrum Orbit stack.
 """
 
 def run(plan, args={}):
     """
-    Main entry point for Kurtosis Orbit deployment
+    Main entry point for Kurtosis Orbit deployment.
     
     Args:
-        plan: The Kurtosis execution plan
-        args: Configuration parameters for customizing the deployment
-        
-    Returns:
-        Dictionary containing endpoints and connection information for the deployed services
+        plan: Kurtosis execution plan
+        args: Configuration parameters
     """
-    # Import supporting modules - do this inside the function to avoid circular imports
+    # Import modules
     config_module = import_module("./config.star")
     ethereum_module = import_module("./ethereum.star")
     rollup_module = import_module("./rollup.star")
@@ -26,44 +23,49 @@ def run(plan, args={}):
     # Process and validate configuration
     config = config_module.process_config(args)
     
-    # Display banner with configuration information
-    plan.print("=========================================")
-    plan.print("Kurtosis-Orbit: Arbitrum Orbit Deployment")
-    plan.print("=========================================")
-    plan.print("Chain name: " + config.chain_name)
-    plan.print("Chain ID: " + str(config.chain_id))
-    plan.print("Deploying in " + ("rollup" if config.rollup_mode else "anytrust") + " mode")
+    # Display deployment banner
+    utils_module.print_deployment_banner(plan, config)
     
-    # Step 1: Deploy Ethereum L1 Chain
+    # Phase 1: Deploy Ethereum L1
+    plan.print("🚀 Phase 1/5: Deploying Ethereum L1 chain...")
     l1_info = ethereum_module.deploy_ethereum_l1(plan, config)
     
-    # Step 2: Deploy Orbit rollup contracts on L1
+    # Phase 2: Deploy Orbit rollup contracts
+    plan.print("📜 Phase 2/5: Deploying Orbit rollup contracts on L1...")
     rollup_info = rollup_module.deploy_rollup_contracts(plan, config, l1_info)
     
-    # Step 3: Deploy Arbitrum Nitro nodes
+    # Phase 3: Deploy Nitro nodes
+    plan.print("⚡ Phase 3/5: Deploying Arbitrum Nitro nodes...")
     nodes_info = nitro_module.deploy_nitro_nodes(plan, config, l1_info, rollup_info)
     
-    # Step 4: Deploy token bridge (if enabled)
+    # Phase 4: Deploy token bridge (if enabled)
     bridge_info = {}
     if config.enable_bridge:
+        plan.print("🌉 Phase 4/5: Deploying token bridge...")
         bridge_info = tokenbridge_module.deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info)
+    else:
+        plan.print("⏭️  Phase 4/5: Skipping token bridge (disabled)")
     
-    # Step 5: Deploy block explorer (if enabled)
+    # Phase 5: Deploy explorer (if enabled)
     explorer_info = {}
     if config.enable_explorer:
+        plan.print("🔍 Phase 5/5: Deploying block explorer...")
         explorer_info = explorer_module.deploy_blockscout(plan, config, nodes_info)
+    else:
+        plan.print("⏭️  Phase 5/5: Skipping explorer (disabled)")
     
-    # Prepare output with connection information
+    # Generate deployment summary
     output = {
         "ethereum_l1": l1_info,
         "arbitrum_l2": nodes_info,
-        # "token_bridge": bridge_info,
+        "rollup_contracts": rollup_info,
+        "token_bridge": bridge_info,
         "explorer": explorer_info,
         "chain_info": {
             "name": config.chain_name,
             "chain_id": config.chain_id,
             "mode": "rollup" if config.rollup_mode else "anytrust",
-            "owner_address": rollup_info["owner_address"],
+            "owner_address": config.owner_address,
         }
     }
     

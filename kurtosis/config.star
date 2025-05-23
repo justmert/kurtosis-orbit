@@ -1,10 +1,8 @@
 """
-Improved configuration module for Kurtosis-Orbit.
-This module aligns with nitro-testnode's account structure and configuration patterns.
+Configuration module with validation and nitro-testnode alignment.
 """
 
-# Standard accounts from nitro-testnode mnemonic: 
-# "indoor dish desk flag debris potato excuse depart ticket judge file exit"
+# Standard accounts from nitro-testnode mnemonic
 STANDARD_ACCOUNTS = {
     "funnel": {
         "private_key": "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
@@ -18,60 +16,33 @@ STANDARD_ACCOUNTS = {
         "private_key": "7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
         "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
     },
-    "l3owner": {
-        "private_key": "47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a",
-        "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
-    },
-    "l3sequencer": {
-        "private_key": "8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba",
-        "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
-    },
     "l2owner": {
-        "private_key":"92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
+        "private_key": "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
         "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9"
-    },
-    "auctioneer": {
-        "private_key": "4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356",
-        "address": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955"
     }
 }
 
-# Default configuration matching nitro-testnode patterns
+# Default configuration
 DEFAULT_CONFIG = {
     "chain_name": "Orbit-Dev-Chain",
     "chain_id": 412346,
     "l1_chain_id": 1337,
-    
-    # Rollup configuration
-    "rollup_mode": True,  # True for rollup, False for anytrust
+    "rollup_mode": True,
     "challenge_period_blocks": 20,
-    "stake_token": "0x0000000000000000000000000000000000000000",  # ETH by default
+    "stake_token": "0x0000000000000000000000000000000000000000",
     "base_stake": "0",
-    
-    # Account configuration - using l2owner as primary (matches nitro-testnode)
-    "owner_key_name": "l2owner",
     "owner_private_key": STANDARD_ACCOUNTS["l2owner"]["private_key"],
     "owner_address": STANDARD_ACCOUNTS["l2owner"]["address"],
-    
-    "sequencer_key_name": "sequencer", 
     "sequencer_private_key": STANDARD_ACCOUNTS["sequencer"]["private_key"],
     "sequencer_address": STANDARD_ACCOUNTS["sequencer"]["address"],
-    
-    "validator_key_name": "validator",
-    "validator_private_key": STANDARD_ACCOUNTS["validator"]["private_key"], 
+    "validator_private_key": STANDARD_ACCOUNTS["validator"]["private_key"],
     "validator_address": STANDARD_ACCOUNTS["validator"]["address"],
-    
-    # Service configuration
-    "simple_mode": True,  # Single node doing sequencer + staker + poster
+    "simple_mode": True,
     "validator_count": 1,
-    "batch_poster_count": 0,  # Only used if simple_mode is False
     "enable_bridge": True,
-    "enable_explorer": True,
-    
-    # Pre-fund these accounts in L1 genesis (matches nitro-testnode)
-    "pre_fund_accounts": ["funnel", "sequencer", "validator", "l2owner", "auctioneer"],
-    
-    # Docker images
+    "enable_explorer": False,
+    "enable_timeboost": False,
+    "pre_fund_accounts": ["funnel", "sequencer", "validator", "l2owner"],
     "nitro_image": "offchainlabs/nitro-node:v3.5.5-90ee45c",
     "nitro_contracts_branch": "v2.1.1-beta.0",
     "token_bridge_branch": "v1.2.2",
@@ -79,152 +50,97 @@ DEFAULT_CONFIG = {
 
 def process_config(args):
     """
-    Process and validate user-provided configuration parameters
-    
-    Args:
-        args: Dictionary containing user-provided configuration parameters
-        
-    Returns:
-        Configuration object containing validated parameters
+    Process and validate user configuration.
     """
-    # Start with default configuration
+    # Start with defaults
     config_dict = dict(DEFAULT_CONFIG)
     
-    # Handle nested orbit_config structure
+    # Merge user config
     if "orbit_config" in args:
         orbit_config = args["orbit_config"]
         for key, value in orbit_config.items():
             if key in config_dict:
                 config_dict[key] = value
-    else:
-        # Handle flat structure
-        for key, value in args.items():
-            if key in config_dict:
-                config_dict[key] = value
-    
-    # Create a struct from the dictionary
-    config = struct(**config_dict)
     
     # Validate configuration
-    validate_config(config)
+    validate_config(config_dict)
     
-    # Set derived parameters
-    config = set_derived_parameters(config)
+    # Generate dynamic values
+    config_dict["jwt_secret"] = generate_jwt_secret()
+    config_dict["val_jwt_secret"] = generate_jwt_secret()
     
-    return config
+    # Set derived values
+    if not config_dict.get("owner_private_key"):
+        config_dict["owner_private_key"] = STANDARD_ACCOUNTS["l2owner"]["private_key"]
+        config_dict["owner_address"] = STANDARD_ACCOUNTS["l2owner"]["address"]
+    
+    return struct(**config_dict)
 
 def validate_config(config):
     """
-    Validate the configuration parameters
-    
-    Args:
-        config: Configuration object
+    Validate configuration parameters.
     """
-    # Validate chain ID
-    if config.chain_id <= 0:
-        fail("Chain ID must be greater than 0")
+    # Chain ID validation
+    if config["chain_id"] <= 0:
+        fail("chain_id must be positive")
     
-    # Validate L1 chain ID  
-    if config.l1_chain_id <= 0:
-        fail("L1 chain ID must be greater than 0")
+    if config["l1_chain_id"] <= 0:
+        fail("l1_chain_id must be positive")
     
-    # Validate challenge period
-    if config.challenge_period_blocks <= 0:
-        fail("Challenge period blocks must be greater than 0")
+    if config["chain_id"] == config["l1_chain_id"]:
+        fail("L2 chain_id must be different from L1 chain_id")
     
-    # Validate validator count
-    if config.validator_count < 0:
-        fail("Validator count must be non-negative")
+    # Challenge period validation
+    if config["challenge_period_blocks"] <= 0:
+        fail("challenge_period_blocks must be positive")
     
-    # Validate private keys
-    if not config.owner_private_key or len(config.owner_private_key) != 64:
-        fail("Owner private key must be 64 characters (32 bytes) long without '0x' prefix")
+    # Validator count validation
+    if config["validator_count"] < 0:
+        fail("validator_count must be non-negative")
     
-    if not config.sequencer_private_key or len(config.sequencer_private_key) != 64:
-        fail("Sequencer private key must be 64 characters (32 bytes) long without '0x' prefix")
+    if config["validator_count"] > 1:
+        print("WARNING: Multiple validators not fully supported. Using 1 validator.")
+        config["validator_count"] = 1
     
-    # Validate addresses
-    if not config.owner_address or not config.owner_address.startswith("0x"):
-        fail("Owner address must be a valid Ethereum address starting with '0x'")
+    # Mode validation
+    if not config["rollup_mode"] and config.get("anytrust_config") == None:
+        print("WARNING: AnyTrust mode requires das_config. Falling back to rollup mode.")
+        config["rollup_mode"] = True
     
-    if not config.sequencer_address or not config.sequencer_address.startswith("0x"):
-        fail("Sequencer address must be a valid Ethereum address starting with '0x'")
+    # Timeboost validation
+    if config.get("enable_timeboost"):
+        print("WARNING: Timeboost is experimental and may not be fully functional.")
 
-def set_derived_parameters(config):
+def generate_jwt_secret():
     """
-    Set derived parameters based on existing configuration
-    
-    Args:
-        config: Configuration object
-        
-    Returns:
-        Updated configuration object
+    Generate a deterministic JWT secret for development.
+    In production, this should use proper randomness.
     """
-    # Create a dictionary from the config struct
-    config_dict = {key: getattr(config, key) for key in dir(config) if not key.startswith("_")}
-    
-    # If key names are provided, override with standard account values
-    if "owner_key_name" in config_dict and config_dict["owner_key_name"] in STANDARD_ACCOUNTS:
-        account = STANDARD_ACCOUNTS[config_dict["owner_key_name"]]
-        config_dict["owner_private_key"] = account["private_key"]
-        config_dict["owner_address"] = account["address"]
-    
-    if "sequencer_key_name" in config_dict and config_dict["sequencer_key_name"] in STANDARD_ACCOUNTS:
-        account = STANDARD_ACCOUNTS[config_dict["sequencer_key_name"]]
-        config_dict["sequencer_private_key"] = account["private_key"]
-        config_dict["sequencer_address"] = account["address"]
-    
-    if "validator_key_name" in config_dict and config_dict["validator_key_name"] in STANDARD_ACCOUNTS:
-        account = STANDARD_ACCOUNTS[config_dict["validator_key_name"]]
-        config_dict["validator_private_key"] = account["private_key"]
-        config_dict["validator_address"] = account["address"]
-    
-    # Create a new struct with the updated values
-    return struct(**config_dict)
+    # Using a fixed value for deterministic development environment
+    return "0x" + ("0" * 64)
 
 def get_prefunded_accounts_json(config):
     """
-    Generate JSON for prefunding accounts in the Ethereum genesis block
-    Based on nitro-testnode's account funding approach
-    
-    Args:
-        config: Configuration object
-        
-    Returns:
-        JSON string of accounts to prefund
+    Generate JSON for prefunding accounts in L1 genesis.
     """
     accounts = {}
     
-    # Pre-fund all standard accounts that should be funded
+    # Fund standard accounts
     for acc_name in config.pre_fund_accounts:
         if acc_name in STANDARD_ACCOUNTS:
-            # Fund with 1000 ETH each (matching nitro-testnode)
             accounts[STANDARD_ACCOUNTS[acc_name]["address"]] = {
-                "balance": "1000000000000000000000"  # 1000 ETH in wei
+                "balance": "1000000000000000000000"  # 1000 ETH
             }
     
-    # Always ensure owner and sequencer have funds
-    accounts[config.owner_address] = {"balance": "1000000000000000000000"}
-    accounts[config.sequencer_address] = {"balance": "1000000000000000000000"}
-    
-    # Add the special deployer account (used in nitro-testnode geth genesis)
+    # Always fund the deployer account
     accounts["0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E"] = {
-        "balance": "1000000000000000000000000000000000"  # Very large balance for deployer
+        "balance": "1000000000000000000000000000000000"  # Large balance
     }
     
-    return json.encode(accounts)
-
-def get_account_by_name(name):
-    """
-    Get account information by name
+    # Add any custom prefund addresses
+    if hasattr(config, "prefund_addresses"):
+        for addr in config.prefund_addresses:
+            if addr.startswith("0x") and len(addr) == 42:
+                accounts[addr] = {"balance": "100000000000000000000"}  # 100 ETH
     
-    Args:
-        name: Account name (e.g., "sequencer", "validator", etc.)
-        
-    Returns:
-        Account dictionary with private_key and address
-    """
-    if name in STANDARD_ACCOUNTS:
-        return STANDARD_ACCOUNTS[name]
-    else:
-        fail("Unknown account name: " + name + ". Available accounts: " + str(list(STANDARD_ACCOUNTS.keys())))
+    return json.encode(accounts)

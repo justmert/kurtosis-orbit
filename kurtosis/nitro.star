@@ -1,116 +1,78 @@
 """
-Corrected Nitro nodes deployment module for Kurtosis-Orbit.
-This module handles the deployment of Arbitrum Nitro nodes (sequencer, validator, batch poster).
-Based on nitro-testnode repository and Arbitrum documentation.
+Nitro node deployment module with nitro-testnode alignment.
 """
 
-# Default Nitro node version (updated to match nitro-testnode)
-NITRO_NODE_VERSION = "offchainlabs/nitro-node:v3.5.5-90ee45c"
-
-# Default development accounts (from nitro-testnode mnemonic)
-DEFAULT_ACCOUNTS = {
-    "funnel": {
-        "private_key": "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-        "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-    },
-    "sequencer": {
-        "private_key": "5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", 
-        "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
-    },
-    "validator": {
-        "private_key": "7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
-        "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
-    },
-    "l2owner": {
-        "private_key": "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
-        "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9"
-    }
-}
-
 def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
-    """ 
-    Deploy Arbitrum Nitro nodes (sequencer, validator, batch poster)
-    
-    Args:
-        plan: The Kurtosis execution plan
-        config: Configuration object
-        l1_info: Information about the Ethereum L1 deployment
-        rollup_info: Information about the deployed rollup contracts
-        
-    Returns:
-        Dictionary with node information
     """
-    plan.print("Deploying Arbitrum Nitro nodes...")
+    Deploy Arbitrum Nitro nodes (sequencer and validators).
+    """
+    plan.print("Deploying Nitro nodes...")
     
-    # Validate required artifacts
-    if "artifacts" not in rollup_info or "chain_info" not in rollup_info["artifacts"]:
-        fail("Error: Missing chain_info artifact in rollup_info. Deployment may have failed.")
-
-    plan.print("Using chain_info from rollup deployment")
+    # Deploy validation node first (if validators are enabled)
+    validation_node = None
+    if config.validator_count > 0:
+        validation_node = deploy_validation_node(plan, config, l1_info, rollup_info)
     
-    # 1. Deploy the sequencer node
+    # Deploy sequencer
     sequencer = deploy_sequencer_node(plan, config, l1_info, rollup_info)
     
-    # 2. Deploy validator node(s) if configured
+    # Deploy validators
     validators = []
-    validator_count = getattr(config, "validator_count", 1)
-    if validator_count > 0:
-        for i in range(validator_count):
-            plan.print("Deploying validator node " + str(i+1) + "/" + str(validator_count) + "...")
-            validators.append(deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, i))
+    for i in range(config.validator_count):
+        validator = deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, i)
+        validators.append(validator)
     
     return {
         "sequencer": sequencer,
         "validators": validators,
+        "validation_node": validation_node,
     }
 
 def deploy_sequencer_node(plan, config, l1_info, rollup_info):
     """
-    Deploy an Arbitrum Nitro sequencer node following nitro-testnode patterns
+    Deploy Nitro sequencer node.
     """
-    plan.print("Deploying sequencer node...")
-    
-    # Get configuration values with defaults
-    chain_id = getattr(config, "chain_id", 412346)
-    chain_name = getattr(config, "chain_name", "OrbitDevChain")
-    simple_mode = getattr(config, "simple_mode", True)
-    
-    # Use the sequencer account (matching nitro-testnode)
-    sequencer_key = DEFAULT_ACCOUNTS["sequencer"]["private_key"]
-    sequencer_address = DEFAULT_ACCOUNTS["sequencer"]["address"]
-    
-    # Create sequencer configuration matching nitro-testnode structure
+    # Create sequencer configuration
     sequencer_config = {
-        "ensure-rollup-deployment": False,  # Important: don't try to deploy rollup
         "parent-chain": {
             "connection": {
                 "url": "http://el-1-geth-lighthouse:8545"
             }
         },
         "chain": {
-            "id": chain_id,
+            "id": config.chain_id,
             "info-files": ["/chain-info/chain_info.json"]
         },
         "node": {
             "sequencer": True,
             "dangerous": {
-                "no-sequencer-coordinator": simple_mode,
+                "no-sequencer-coordinator": config.simple_mode,
                 "disable-blob-reader": True
             },
             "delayed-sequencer": {
                 "enable": True
             },
             "batch-poster": {
-                "enable": simple_mode,
+                "enable": config.simple_mode,
                 "max-delay": "30s",
                 "l1-block-bound": "ignore",
                 "parent-chain-wallet": {
-                    "private-key": sequencer_key
+                    "private-key": config.sequencer_private_key
                 },
                 "data-poster": {
                     "wait-for-l1-finality": False
                 }
             },
+            "staker": {
+                "enable": config.simple_mode,
+                "dangerous": {
+                    "without-block-validator": True
+                },
+                "parent-chain-wallet": {
+                    "private-key": config.validator_private_key
+                },
+                "use-smart-contract-wallet": True
+            } if config.simple_mode else {},
             "feed": {
                 "output": {
                     "enable": True,
@@ -150,43 +112,41 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
         }
     }
     
-    # Convert to JSON for config file
-    sequencer_config_json = json.encode(sequencer_config)
-    
-    # Create config file artifact
+    # Create config artifact
     sequencer_config_artifact = plan.render_templates(
         name="sequencer-config",
         config={
             "sequencer_config.json": struct(
-                template=sequencer_config_json,
+                template=json.encode(sequencer_config),
                 data={},
             ),
         },
     )
     
-    # Deploy the sequencer service - following nitro-testnode patterns
+    # Deploy sequencer service
     sequencer_service = plan.add_service(
         name="orbit-sequencer",
         config=ServiceConfig(
-            image=NITRO_NODE_VERSION,
+            image=config.nitro_image,
             ports={
                 "rpc": PortSpec(
-                    number=8547, 
-                    transport_protocol="TCP", 
-                    application_protocol="http"
+                    number=8547,
+                    transport_protocol="TCP",
+                    application_protocol="http",
+                    wait="60s"
                 ),
                 "ws": PortSpec(
-                    number=8548, 
-                    transport_protocol="TCP", 
-                    application_protocol="ws"
+                    number=8548,
+                    transport_protocol="TCP",
+                    application_protocol="ws",
+                    wait="60s"
                 ),
                 "feed": PortSpec(
-                    number=9642, 
-                    transport_protocol="TCP", 
-                    wait=None  # Don't wait for this port immediately
+                    number=9642,
+                    transport_protocol="TCP",
+                    wait=None
                 ),
             },
-            # Use command pattern from nitro-testnode with proper initialization
             cmd=[
                 "--conf.file=/config/sequencer_config.json",
                 "--node.feed.output.enable",
@@ -195,14 +155,10 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                 "--node.seq-coordinator.my-url=http://orbit-sequencer:8547",
                 "--validation.wasm.allowed-wasm-module-roots=/home/user/nitro-legacy/machines,/home/user/target/machines"
             ],
-            env_vars={
-                # Environment variables are optional, the config file has the key
-            },
             files={
                 "/config": sequencer_config_artifact,
                 "/chain-info": rollup_info["artifacts"]["chain_info"],
             },
-            # Add ready condition to wait for RPC to be available
             ready_conditions=ReadyCondition(
                 recipe=PostHttpRequestRecipe(
                     port_id="rpc",
@@ -211,69 +167,118 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                     body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
                 ),
                 field="code",
-                assertion="==", 
+                assertion="==",
                 target_value=200,
+                timeout="5m"
             ),
         ),
     )
     
-    # Test the RPC endpoint is working
-    plan.wait(
-        service_name="orbit-sequencer",
-        recipe=PostHttpRequestRecipe(
-            port_id="rpc",
-            endpoint="",
-            content_type="application/json",
-            body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}',
-        ),
-        field="code",
-        assertion="==",
-        target_value=200,
-        timeout="2m",
-    )
-    
-    plan.print("Sequencer node is running and accessible!")
+    plan.print("✅ Sequencer node is running!")
     
     return {
-        "rpc_url": "http://" + sequencer_service.hostname + ":" + str(sequencer_service.ports["rpc"].number),
-        "ws_url": "ws://" + sequencer_service.hostname + ":" + str(sequencer_service.ports["ws"].number),
-        "feed_url": "ws://" + sequencer_service.hostname + ":" + str(sequencer_service.ports["feed"].number),
+        "service": sequencer_service,
+        "rpc_url": "http://{}:{}".format(sequencer_service.hostname, 8547),
+        "ws_url": "ws://{}:{}".format(sequencer_service.hostname, 8548),
+        "feed_url": "ws://{}:{}".format(sequencer_service.hostname, 9642),
     }
 
-def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
+def deploy_validation_node(plan, config, l1_info, rollup_info):
     """
-    Deploy an Arbitrum Nitro validator node
+    Deploy nitro-val validation node.
     """
-    chain_id = getattr(config, "chain_id", 412346)
+    validation_config = {
+        "persistent": {
+            "chain": "/home/user/.arbitrum/local/nitro"
+        },
+        "ws": {
+            "addr": "",
+        },
+        "http": {
+            "addr": "",
+        },
+        "validation": {
+            "api-auth": True,
+            "api-public": False,
+        },
+        "auth": {
+            "jwtsecret": "/config/val_jwt.hex",
+            "addr": "0.0.0.0",
+            "port": 8549,
+        },
+    }
     
-    # Use the validator account
-    validator_key = DEFAULT_ACCOUNTS["validator"]["private_key"]
+    # Create config artifact with JWT file included
+    validation_config_artifact = plan.render_templates(
+        name="validation-node-config",
+        config={
+            "validation_node_config.json": struct(
+                template=json.encode(validation_config),
+                data={},
+            ),
+            "val_jwt.hex": struct(
+                template=config.val_jwt_secret,
+                data={},
+            ),
+        },
+    )
     
+    # Deploy validation node
+    validation_service = plan.add_service(
+        name="validation-node",
+        config=ServiceConfig(
+            image=config.nitro_image,
+            entrypoint=["/usr/local/bin/nitro-val"],
+            cmd=["--conf.file=/config/validation_node_config.json"],
+            ports={
+                "api": PortSpec(
+                    number=8549,
+                    transport_protocol="TCP",
+                    wait="30s"
+                ),
+            },
+            files={
+                "/config": validation_config_artifact,
+            },
+        ),
+    )
+    
+    plan.print("✅ Validation node is running!")
+    
+    return {
+        "service": validation_service,
+        "url": "http://{}:{}".format(validation_service.hostname, 8549),
+        "jwt": config.val_jwt_secret,
+    }
+
+def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, index):
+    """
+    Deploy Nitro validator node.
+    """
     # Create validator configuration
     validator_config = {
-        "ensure-rollup-deployment": False,  # Important: don't try to deploy rollup
         "parent-chain": {
             "connection": {
                 "url": "http://el-1-geth-lighthouse:8545"
             }
         },
         "chain": {
-            "id": chain_id,
+            "id": config.chain_id,
             "info-files": ["/chain-info/chain_info.json"]
         },
         "node": {
             "feed": {
                 "input": {
-                    "url": "ws://orbit-sequencer:9642"  # Use static service reference
+                    "url": "ws://orbit-sequencer:9642"
                 }
             },
             "staker": {
                 "enable": True,
                 "dangerous": {
-                    "without-block-validator": True  # Unsafe staker mode for development
+                    "without-block-validator": False
                 },
                 "parent-chain-wallet": {
-                    "private-key": validator_key
+                    "private-key": config.validator_private_key
                 },
                 "use-smart-contract-wallet": True
             },
@@ -287,18 +292,24 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
             },
             "batch-poster": {
                 "enable": False
-            }
+            },
+            "block-validator": {
+                "validation-server": {
+                    "url": "ws://validation-node:8549",
+                    "jwtsecret": "/config/val_jwt.hex",
+                }
+            } if validation_node else {}
         },
         "execution": {
             "sequencer": {
                 "enable": False
             },
-            "forwarding-target": "http://orbit-sequencer:8547"  # Use static service reference
+            "forwarding-target": "http://orbit-sequencer:8547"
         },
         "http": {
             "addr": "0.0.0.0",
             "port": 8547,
-            "vhosts": "*", 
+            "vhosts": "*",
             "corsdomain": "*",
             "api": ["net", "web3", "eth", "debug"]
         },
@@ -321,32 +332,36 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
         }
     }
     
-    validator_config_json = json.encode(validator_config)
+    # Create config artifact with JWT file included
     validator_config_artifact = plan.render_templates(
-        name="validator-" + str(index) + "-config",
+        name="validator-{}-config".format(index),
         config={
             "validator_config.json": struct(
-                template=validator_config_json,
+                template=json.encode(validator_config),
+                data={},
+            ),
+            "val_jwt.hex": struct(
+                template=config.val_jwt_secret,
                 data={},
             ),
         },
     )
     
-    # Deploy the validator node
-    validator_name = "orbit-validator-" + str(index)
+    # Deploy validator service
     validator_service = plan.add_service(
-        name=validator_name,
+        name="orbit-validator-{}".format(index),
         config=ServiceConfig(
-            image=NITRO_NODE_VERSION,
+            image=config.nitro_image,
             ports={
                 "rpc": PortSpec(
-                    number=8547, 
-                    transport_protocol="TCP", 
-                    application_protocol="http"
+                    number=8547,
+                    transport_protocol="TCP",
+                    application_protocol="http",
+                    wait="60s"
                 ),
                 "ws": PortSpec(
-                    number=8548, 
-                    transport_protocol="TCP", 
+                    number=8548,
+                    transport_protocol="TCP",
                     application_protocol="ws"
                 ),
             },
@@ -355,7 +370,6 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
                 "--http.api=net,web3,eth,debug",
                 "--validation.wasm.allowed-wasm-module-roots=/home/user/nitro-legacy/machines,/home/user/target/machines"
             ],
-            env_vars={},
             files={
                 "/config": validator_config_artifact,
                 "/chain-info": rollup_info["artifacts"]["chain_info"],
@@ -370,13 +384,15 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
                 field="code",
                 assertion="==",
                 target_value=200,
+                timeout="3m"
             ),
         ),
     )
     
-    plan.print("Validator-" + str(index) + " node is running!")
+    plan.print("✅ Validator {} is running!".format(index))
     
     return {
-        "rpc_url": "http://" + validator_service.hostname + ":" + str(validator_service.ports["rpc"].number),
-        "ws_url": "ws://" + validator_service.hostname + ":" + str(validator_service.ports["ws"].number),
+        "service": validator_service,
+        "rpc_url": "http://{}:{}".format(validator_service.hostname, 8547),
+        "ws_url": "ws://{}:{}".format(validator_service.hostname, 8548),
     }

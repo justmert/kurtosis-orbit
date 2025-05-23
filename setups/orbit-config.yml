@@ -1,0 +1,25 @@
+# Example configuration for Kurtosis-Orbit deployment
+chain_name: "MyCustomOrbitChain"
+chain_id: 91234
+l1_chain_id: 1337
+rollup_mode: true  # true for rollup, false for anytrust
+challenge_period_blocks: 20
+validator_count: 1
+enable_bridge: true
+enable_explorer: true
+simple_mode: true  # Single node acts as sequencer, validator, and batch poster
+
+# Optional: Specify custom accounts (uses defaults if not provided)
+# owner_private_key: "your_private_key_here"
+# sequencer_private_key: "your_private_key_here"
+# validator_private_key: "your_private_key_here"
+
+# Optional: Additional addresses to prefund on L1
+prefund_addresses:
+  - "0x1234567890123456789012345678901234567890"
+  - "0x0987654321098765432109876543210987654321"
+
+# Optional: Custom Docker images
+# nitro_image: "offchainlabs/nitro-node:v3.5.5-90ee45c"
+# nitro_contracts_branch: "v2.1.1-beta.0"
+# token_bridge_branch: "v1.2.2"
