@@ -1,23 +1,81 @@
-# Basic configuration for kurtosis-orbit
-# This configuration deploys a simple Arbitrum Orbit chain with minimal settings
+# config/examples/basic.yml
+# Basic configuration example for Kurtosis-Orbit
+# This minimal setup focuses on core functionality with low resource usage
+orbit_config:
+  # Chain identifiers
+  chain_name: "BasicOrbitChain"
+  chain_id: 412347
+  
+  # Rollup configuration - simplified for quick startup
+  rollup_mode: "rollup"
+  challenge_period_blocks: 10  # Smaller challenge period for faster development
+  
+  # Services configuration - minimal services
+  validator_count: 0  # No validators to save resources
+  enable_bridge: true
+  enable_explorer: false  # No explorer to save resources
 
-# L1 Configuration
-l1_chain_id: 1337
+---
+# config/examples/full.yml
+# Full configuration example for Kurtosis-Orbit
+orbit_config:
+  # Chain identifiers
+  chain_name: "FullFeaturedOrbit"
+  chain_id: 412346
+  l1_chain_id: 1337
+  
+  # Rollup configuration
+  rollup_mode: "rollup"  # Options: "rollup" or "anytrust"
+  challenge_period_blocks: 20
+  stake_token: "0x0000000000000000000000000000000000000000"  # ETH as stake token
+  base_stake: "0x0"
+  
+  # Key management (default key provided for development)
+  # Warning: Do not use this key for production environments
+  owner_private_key: "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
+  
+  # Services configuration
+  validator_count: 2  # Running multiple validators for better testing
+  enable_bridge: true
+  enable_explorer: true  # Enable Blockscout explorer for easier debugging and monitoring
+  
+  # Docker images
+  nitro_image: "offchainlabs/nitro-node:v3.5.5-90ee45c"
+  
+  # Optional prefunding - addresses to prefund with ETH on L1
+  prefund_addresses: [
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+  ]
+  
+  # AnyTrust specific configuration (only used if rollup_mode is "anytrust")
+  anytrust_config:
+    enable_local_das: true
+    das_members: []
 
-# L2 Configuration
-l2_chain_id: 421613
-l2_chain_name: "orbit-local-dev"
-
-# Rollup Configuration
-rollup_mode: "rollup"  # "rollup" or "anytrust"
-challenge_period_blocks: 20
-
-# Services Configuration
-token_bridge: true
-explorer: false
-validator_count: 1
-
-# Pre-fund these addresses with ETH on L1 and L2
-# prefund_addresses:
-#   - "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-#   - "0x123..."
+---
+# config/examples/explorer-focused.yml
+# Configuration example focused on explorer and debugging capabilities
+orbit_config:
+  # Chain identifiers
+  chain_name: "OrbitExplorerDemo"
+  chain_id: 412348
+  l1_chain_id: 1337
+  
+  # Rollup configuration optimized for explorer demonstration
+  rollup_mode: "rollup"
+  challenge_period_blocks: 5  # Very short for quick finalization
+  
+  # Services configuration - focused on explorer
+  validator_count: 1
+  enable_bridge: true
+  enable_explorer: true  # Main feature - Blockscout explorer
+  
+  # Pre-fund several accounts for testing transactions in explorer
+  prefund_addresses: [
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",  # Account 1
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",  # Account 2
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906",  # Account 3
+    "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",  # Account 4
+    "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"   # Account 5
+  ]
