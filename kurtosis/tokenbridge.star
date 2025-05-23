@@ -21,7 +21,9 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
     plan.print("Deploying L1-L2 token bridge using token-bridge-contracts...")
     
     # Deploy the token bridge using the official token-bridge-contracts approach
-    # This follows the same pattern as nitro-testnode
+    # This follows the production deployment pattern with two steps:
+    # 1. Deploy TokenBridgeCreator
+    # 2. Create the actual token bridge
     bridge_deployer = plan.add_service(
         name="token-bridge-deployer",
         config=ServiceConfig(
@@ -33,20 +35,23 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
                 }
             ),
             cmd=[
-                "deploy:local:token-bridge"
+                "sh", "-c", "/workspace/deploy-token-bridge.sh"  # Use the deployment script with yarn commands
             ],
             env_vars={
-                # Environment variables following nitro-testnode pattern
-                "ROLLUP_OWNER_KEY": config.owner_private_key,
-                "ROLLUP_ADDRESS": rollup_info["rollup_address"],
-                "PARENT_KEY": config.owner_private_key,  # Using owner key for parent chain
-                "PARENT_RPC": l1_info["rpc_url"],
-                "CHILD_KEY": config.owner_private_key,   # Using owner key for child chain
-                "CHILD_RPC": nodes_info["sequencer"]["rpc_url"],
-            },
-            # Add volume to persist the network.json and other output files
-            files={
-                "/workspace": ".",  # This will be the working directory in the container
+                # Environment variables for TokenBridgeCreator deployment
+                "BASECHAIN_RPC": "http://el-1-geth-lighthouse:8545",  # L1 RPC
+                "BASECHAIN_DEPLOYER_KEY": "0x" + config.owner_private_key,  # Deployer private key
+                "BASECHAIN_WETH": "0x0000000000000000000000000000000000000000",  # WETH address (zero for local)
+                "GAS_LIMIT_FOR_L2_FACTORY_DEPLOYMENT": "6000000",  # Gas limit for L2 factory deployment
+                "ORBIT_RPC": "http://orbit-sequencer:8547",  # L2 RPC for gas estimation
+                "ROLLUP_ADDRESS": rollup_info["rollup_address"],  # Rollup contract address
+                
+                # Environment variables for token bridge creation
+                "ROLLUP_OWNER": "0x" + config.owner_private_key,  # Same as deployer for local
+                # L1_TOKEN_BRIDGE_CREATOR will be extracted and set by the deployment script
+                
+                # Optional (for verification, can be empty for local)
+                "ARBISCAN_API_KEY": "",
             },
         ),
     )
@@ -61,7 +66,7 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
         field="code",
         assertion="==",
         target_value=0,
-        timeout="10m",  # Token bridge deployment can take time
+        timeout="2m",  # Token bridge deployment can take time
     )
     
     # Copy the network configuration files

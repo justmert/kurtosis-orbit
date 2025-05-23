@@ -25,5 +25,8 @@ RUN git clone --no-checkout https://github.com/OffchainLabs/token-bridge-contrac
 RUN yarn install && yarn cache clean
 RUN yarn build
 
-# Set entrypoint to yarn for easy command execution
-ENTRYPOINT ["yarn"]
+# Copy the deployment script
+COPY deploy-token-bridge.sh /workspace/deploy-token-bridge.sh
+RUN chmod +x /workspace/deploy-token-bridge.sh
+
+# No entrypoint - allows running any command directly
