@@ -15,11 +15,36 @@ def create_empty_dir_artifact(plan, name):
         name=name + "-empty-dir",
     )
 
-# Default Nitro node version
+# # Default Nitro node version
+# NITRO_NODE_VERSION = "offchainlabs/nitro-node:v3.5.5-90ee45c"
+
+# # Default private key for development
+# DEV_PRIVATE_KEY = "b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659"
+
+
+# Default Nitro node version (updated to match nitro-testnode)
 NITRO_NODE_VERSION = "offchainlabs/nitro-node:v3.5.5-90ee45c"
 
-# Default private key for development
-DEV_PRIVATE_KEY = "b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659"
+# Default development accounts (from nitro-testnode mnemonic)
+DEFAULT_ACCOUNTS = {
+    "funnel": {
+        "private_key": "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+        "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+    },
+    "sequencer": {
+        "private_key": "5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", 
+        "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    },
+    "validator": {
+        "private_key": "7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+        "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+    },
+    "l2owner": {
+        "private_key": "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
+        "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9"
+    }
+}
+
 
 def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
     """ 
@@ -101,23 +126,41 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
     """
     plan.print("Deploying sequencer node...")
     
+    # Get the private key to use
+    sequencer_key = config.owner_private_key if hasattr(config, 'owner_private_key') else DEV_PRIVATE_KEY
+    if sequencer_key == DEV_PRIVATE_KEY:
+        plan.print("WARNING: Using default development private key. This should not be used in production.")
+    
     # Create sequencer configuration
     sequencer_config = {
+        "ensure-rollup-deployment": False,
         "parent-chain": {
             "connection": {
-                "url": l1_info["rpc_url"]
+                "url": "http://el-1-geth-lighthouse:8545"
             }
         },
-        "chain": {
-            "id": config.chain_id,
-            "name": config.chain_name
-        },
         "node": {
-            "sequencer": {
-                "enable": True,
+            "staker": {
                 "dangerous": {
                     "without-block-validator": True
-                }
+                },
+                "parent-chain-wallet": {
+                    "private-key": sequencer_key,
+                },
+                "disable-challenge": False,
+                "enable": config.simple_mode,
+                "use-smart-contract-wallet": True,
+                "staker-interval": "10s",
+                "make-assertion-interval": "10s",
+                "strategy": "MakeNodes",
+            },
+            "sequencer": True,
+            "dangerous": {
+                "no-sequencer-coordinator": True,
+                "disable-blob-reader": True,
+            },
+            "delayed-sequencer": {
+                "enable": True
             },
             "feed": {
                 "output": {
@@ -126,15 +169,27 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                 }
             },
             "batch-poster": {
-                "enable": config.simple_mode,  # Enable batch poster in simple mode
-                "max-size": {"l1-messages": 20, "data": 90000}
-            },
-            "staker": {
-                "enable": config.simple_mode,  # Enable staker in simple mode
-                "dangerous": {
-                    "without-block-validator": True
+                "enable": config.simple_mode,
+                "redis-url": "",
+                "max-delay": "30s",
+                "l1-block-bound": "ignore",
+                "max-size": 90000,
+                "parent-chain-wallet": {
+                    "private-key": sequencer_key,
+                },
+                "data-poster": {
+                    "redis-signer": {
+                        "signing-key": sequencer_key
+                    },
+                    "wait-for-l1-finality": False
                 }
             }
+        },
+        "execution": {
+            "sequencer": {
+                "enable": True
+            },
+            "forwarding-target": "",
         },
         "http": {
             "addr": "0.0.0.0",
@@ -149,40 +204,66 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
             "origins": "*"
         },
         "persistent": {
-            "chain": "/home/user/.arbitrum/local/nitro"
+            "chain": "/home/user/.arbitrum"
         }
     }
-    
-    # If anytrust mode is enabled, add DAS configuration
-    if not config.rollup_mode: # TODO: Add DAS support
+
+        # Add data-availability configuration if anytrust is enabled
+    if hasattr(config, 'rollup_mode') and not config.rollup_mode:
         sequencer_config["node"]["data-availability"] = {
             "enable": True,
-            "mode": "anytrust",
+            "rpc-aggregator": {
+                "enable": True,
+                "assumed-honest": 1,
+                "backends": [
+                    {
+                        "url": "http://das-committee-a:9876",
+                        "pubkey": config.dasBlsA if hasattr(config, 'dasBlsA') else ""
+                    },
+                    {
+                        "url": "http://das-committee-b:9876",
+                        "pubkey": config.dasBlsB if hasattr(config, 'dasBlsB') else ""
+                    }
+                ]
+            },
             "rest-aggregator": {
                 "enable": True,
-                "urls": ["http://das-server:9876"]
-            }
+                "urls": ["http://das-mirror:9877"],
+            },
+            "parent-chain-node-url": l1_info["rpc_url"],
+            "sequencer-inbox-address": rollup_info["sequencer_inbox_address"] if "sequencer_inbox_address" in rollup_info else ""
         }
-
-    # Create sequencer configuration file
+    
+    # Add timeboost configuration if enabled
+    if hasattr(config, 'timeboost') and config.timeboost:
+        if "dangerous" not in sequencer_config["execution"]["sequencer"]:
+            sequencer_config["execution"]["sequencer"]["dangerous"] = {}
+        
+        sequencer_config["execution"]["sequencer"]["dangerous"]["timeboost"] = {
+            "enable": False,  # Initially disabled, will be enabled after contract setup
+            "redis-url": "redis://redis:6379"
+        }
+    
+    # Generate the sequencer configuration JSON
     sequencer_config_json = json.encode(sequencer_config)
+
+    # Create a file with the raw JSON content
     sequencer_config_artifact = plan.render_templates(
+        name="sequencer-config",
         config={
-            "sequencer_config.json": struct(  # No leading slash
+            "sequencer_config.json": struct(
                 template=sequencer_config_json,
                 data={},
             ),
         },
-        name="sequencer-config",
     )
+
+
+
     # Create empty directory for sequencer data - FIXED
     sequencer_data_artifact = create_empty_dir_artifact(plan, "sequencer-data")
 
-    # Get the private key to use
-    sequencer_key = config.owner_private_key if hasattr(config, 'owner_private_key') else DEV_PRIVATE_KEY
-    if sequencer_key == DEV_PRIVATE_KEY:
-        plan.print("WARNING: Using default development private key. This should not be used in production.")
-    
+    # plan.print("Chain info: " + str(rollup_info["artifacts"]["chain_info"]))
     # Deploy the sequencer node
     sequencer_service = plan.add_service(
         name="orbit-sequencer",
@@ -198,6 +279,8 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                 "--validation.wasm.allowed-wasm-module-roots",
                 "/home/user/nitro-legacy/machines,/home/user/target/machines",
                 "--conf.file=/config/sequencer_config.json",
+                "--chain.info-json",  # Add this line
+                str(rollup_info["chain_info"]),
                 "--node.feed.output.enable",
                 "--node.feed.output.port=9642",
                 "--http.api=net,web3,eth,debug",
@@ -207,32 +290,31 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
             },
             files={
                 "/config": sequencer_config_artifact,  # Mount to directory, not file
-                "/config/chain_info.json": rollup_info["artifacts"]["chain_info"],
-                "/home/user/.arbitrum/local/nitro": sequencer_data_artifact,
+                # "/config/chain_info.json": rollup_info["artifacts"]["chain_info"],
+                "/home/user/.arbitrum": sequencer_data_artifact,
             },
         ),
-    )
+    )    
+    # # Wait for sequencer to be accessible via HTTP
+    # plan.print("Waiting for sequencer node to start...")
+    # wait_result = plan.wait(
+    #     service_name="orbit-sequencer",
+    #     recipe=PostHttpRequestRecipe(
+    #         port_id="http",
+    #         endpoint="",
+    #         content_type="application/json",
+    #         body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}',
+    #     ),
+    #     field="code",
+    #     assertion="==",
+    #     target_value=200,
+    #     timeout="1m",
+    # )
     
-    # Wait for sequencer to be accessible via HTTP
-    plan.print("Waiting for sequencer node to start...")
-    wait_result = plan.wait(
-        service_name="orbit-sequencer",
-        recipe=PostHttpRequestRecipe(
-            port_id="http",
-            endpoint="",
-            content_type="application/json",
-            body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}',
-        ),
-        field="code",
-        assertion="==",
-        target_value=200,
-        timeout="1m",
-    )
-    
-    if wait_result["code"] == 200:
-        plan.print("Sequencer node is running!")
-    else:
-        plan.print("WARNING: Sequencer health check timed out. The node might still be starting.")
+    # if wait_result["code"] == 200:
+    #     plan.print("Sequencer node is running!")
+    # else:
+    #     plan.print("WARNING: Sequencer health check timed out. The node might still be starting.")
     
     # Perform a JSON-RPC call to verify the node is operational
     block_response = plan.exec(
@@ -304,7 +386,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
             "origins": "*"
         },
         "persistent": {
-            "chain": "/home/user/.arbitrum/local/nitro"
+            "chain": "/home/user/.arbitrum"
         }
     }
     
@@ -351,7 +433,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, index):
                 "--http.api=net,web3,eth,debug",
             ],
             files={
-                "/home/user/.arbitrum/local/nitro": validator_data_artifact,
+                "/home/user/.arbitrum": validator_data_artifact,
                 "/config/validator_config.json": validator_config_artifact,
                 "/config/chain_info.json": rollup_info["artifacts"]["chain_info"],
             },
@@ -411,7 +493,7 @@ def deploy_batch_poster_node(plan, config, l1_info, rollup_info, index):
         "node": {
             "batch-poster": {
                 "enable": True,
-                "max-size": {"l1-messages": 20, "data": 90000}
+                "max-size": 90000
             }
         },
         "http": {
@@ -427,7 +509,7 @@ def deploy_batch_poster_node(plan, config, l1_info, rollup_info, index):
             "origins": "*"
         },
         "persistent": {
-            "chain": "/home/user/.arbitrum/local/nitro"
+            "chain": "/home/user/.arbitrum"
         }
     }
     
@@ -473,7 +555,7 @@ def deploy_batch_poster_node(plan, config, l1_info, rollup_info, index):
                 "NITRO_BATCHPOSTER_PRIVATE_KEY": poster_key,
             },
             files={
-                "/home/user/.arbitrum/local/nitro": batch_poster_data_artifact,
+                "/home/user/.arbitrum": batch_poster_data_artifact,
                 "/config/batch_poster_config.json": batch_poster_config_artifact,
                 "/config/chain_info.json": rollup_info["artifacts"]["chain_info"],
             },

@@ -1,5 +1,5 @@
 # Import the Ethereum package
-ethereum_pkg = import_module("github.com/ethpandaops/ethereum-package/main.star")
+ethereum_pkg = import_module("github.com/ethpandaops/ethereum-package/main.star@5.0.1")
 # Import our config module
 config_module = import_module("./config.star")
 
@@ -32,6 +32,7 @@ def deploy_ethereum_l1(plan, config):
     
     # Run the Ethereum package
     ethereum_result = ethereum_pkg.run(plan, ethereum_config)
+    # fail(ethereum_result)
     
     # Access the execution layer (Ethereum L1) client information from the first participant
     el_client = ethereum_result.all_participants[0].el_context

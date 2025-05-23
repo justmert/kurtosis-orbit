@@ -242,6 +242,17 @@ def deploy_rollup_contracts(plan, config, l1_info):
             command=["sh", "-c", "cat /config/deployment.json | jq -r '.\"native-token\"'"]
         ),
     )
+
+    chain_result = plan.exec(
+        service_name="orbit-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cat /config/chain_info.json"]
+        ),
+    )
+    chain_info = chain_result["output"].strip()
+    
+    bridge_address = bridge_address_result["output"].strip()
+
     native_token = native_token_result["output"].strip()    
     # Return the deployment information
     return {
@@ -249,6 +260,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
             "deployment": deployment_artifact,
             "chain_info": chain_info_artifact,
         },
+        "chain_info": chain_info,
         "rollup_address": rollup_address,
         "bridge_address": bridge_address,
         "inbox_address": inbox_address,
