@@ -1,70 +1,158 @@
-# Getting Started with Kurtosis Orbit
+# Getting Started with Kurtosis-Orbit
 
-This guide will help you quickly deploy your first Orbit chain using Kurtosis Orbit.
+This guide will help you deploy your first Arbitrum Orbit chain in minutes.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+Before you begin, ensure you have:
 
-- [Kurtosis CLI](https://docs.kurtosis.com/install) (v0.47.0 or later)
-- [Docker](https://docs.docker.com/get-docker/)
-- [Node.js](https://nodejs.org/) (v16 or later)
-- [Git](https://git-scm.com/downloads)
+1. **Docker** installed and running
+   - Minimum 8GB RAM allocated
+   - 20GB free disk space
+   - For Mac users: Docker Desktop 4.27.0 or later
+
+2. **Kurtosis CLI** installed
+   ```bash
+   # MacOS/Linux
+   brew install kurtosis-tech/tap/kurtosis-cli
+   
+   # or using the install script
+   curl -s https://get.kurtosis.com | bash
+   ```
+
+3. **System Requirements**
+   - 4+ CPU cores
+   - 8GB+ RAM
+   - Linux, macOS, or Windows with WSL2
 
 ## Quick Start
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-org/kurtosis-orbit.git
-cd kurtosis-orbit
-```
-
-### 2. Start Kurtosis Engine
-
-Ensure the Kurtosis engine is running:
+### Step 1: Start Kurtosis Engine
 
 ```bash
 kurtosis engine start
 ```
 
-### 3. Deploy a Basic Orbit Chain
-
-Use the basic configuration to deploy a simple Orbit chain:
+### Step 2: Deploy Default Orbit Chain
 
 ```bash
-kurtosis run ./kurtosis/main.star --args-file ./config/examples/basic.yml
+kurtosis run github.com/justmert/kurtosis-orbit
 ```
 
-This will:
-- Connect to the Sepolia testnet as L1 (or deploy a local L1 if specified)
-- Deploy an Orbit chain with default parameters
-- Set up a token bridge with WETH and USDC
-- Deploy a block explorer
+This deploys a complete Orbit stack with:
+- Local Ethereum L1 chain
+- Arbitrum Orbit L2 chain (sequencer + validator)
+- Token bridge between L1 and L2
+- Pre-funded development accounts
 
-### 4. Access Your Deployment
+### Step 3: Access Your Chain
 
-Once deployed, Kurtosis will output the URLs for accessing your services:
+After deployment, you'll see output like:
+```
+✅ Kurtosis-Orbit Deployment Complete!
+============================================================
 
-- **Orbit RPC Endpoint**: http://localhost:8545
-- **Block Explorer**: http://localhost:4000
+📊 Chain Information:
+Chain Name: Orbit-Dev-Chain
+Chain ID: 412346
+Mode: rollup
+Owner Address: 0x5E1497dD1f08C87b2d8FE23e9AAB6c1De833D927
 
-## Using a Custom Configuration
+🔌 Connection Information:
+L1 Ethereum RPC: http://el-1-geth-lighthouse:8545
+L2 Arbitrum RPC: http://orbit-sequencer:8547
+L2 Arbitrum WS: ws://orbit-sequencer:8548
+```
 
-To customize your deployment, create a new configuration file or modify an existing one:
+### Step 4: Forward Ports to Localhost
+
+To access the services from your host machine:
 
 ```bash
-cp config/examples/basic.yml my-orbit-config.yml
-# Edit my-orbit-config.yml with your preferred settings
-kurtosis run ./kurtosis/main.star --args-file ./my-orbit-config.yml
+# Get your enclave name
+kurtosis enclave ls
+
+# Forward L2 RPC port
+kurtosis port forward <enclave-name> orbit-sequencer rpc
+
+# Forward L1 RPC port
+kurtosis port forward <enclave-name> el-1-geth-lighthouse rpc
 ```
 
-## Configuration Options
+### Step 5: Connect MetaMask
 
-For a complete list of configuration options, see the [Configuration Documentation](configuration.md).
+1. Open MetaMask
+2. Add Network > Add a network manually
+3. Enter:
+   - Network Name: `Orbit Dev Chain`
+   - RPC URL: `http://localhost:<forwarded-port>`
+   - Chain ID: `412346`
+   - Currency Symbol: `ETH`
 
-## Next Steps
+### Step 6: Use Pre-funded Accounts
 
-- Learn about the [architecture](architecture.md) of Kurtosis Orbit
-- Explore [advanced usage scenarios](advanced-usage.md)
-- Check the [troubleshooting guide](troubleshooting.md) if you encounter issues
+Import these development accounts into MetaMask:
+
+**Funnel Account** (1000 ETH on L1 & L2)
+- Address: `0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E`
+- Private Key: `b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659`
+
+**Sequencer Account** (1000 ETH on L1 & L2)
+- Address: `0xe2148eE53c0755215Df69b2616E552154EdC584f`
+- Private Key: `cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65`
+
+## Basic Usage Examples
+
+### Deploy a Simple Contract
+
+```solidity
+// SimpleStorage.sol
+pragma solidity ^0.8.0;
+
+contract SimpleStorage {
+    uint256 public value;
+    
+    function setValue(uint256 _value) public {
+        value = _value;
+    }
+}
+```
+
+Deploy using Remix or Hardhat to your forwarded RPC endpoint.
+
+### Transfer ETH Between L1 and L2
+
+Use the deployed bridge contracts (addresses shown in deployment output) to transfer ETH between L1 and L2.
+
+## Custom Configuration
+
+Create `my-orbit-config.yml`:
+
+```yaml
+orbit_config:
+  chain_name: "MyCustomChain"
+  chain_id: 555666
+  enable_explorer: true  # Enable Blockscout
+```
+
+Deploy with:
+```bash
+kurtosis run github.com/justmert/kurtosis-orbit --args-file my-orbit-config.yml
+```
+
+## Cleanup
+
+To stop and remove your deployment:
+
+```bash
+# Remove specific enclave
+kurtosis enclave rm <enclave-name>
+
+# Remove all enclaves
+kurtosis clean -a
+```
+
+## Getting Help
+
+- Check [Troubleshooting](./troubleshooting.md) for common issues
+- Report issues on [GitHub](https://github.com/justmert/kurtosis-orbit/issues) 

@@ -1,37 +1,48 @@
-# Full configuration example for Kurtosis-Orbit
+# Full configuration example showing all available options
 orbit_config:
   # Chain identifiers
-  chain_name: "FullFeaturedOrbit"
+  chain_name: "MyFullOrbitChain"
   chain_id: 412346
-  l1_chain_id: 1337
+  l1_chain_id: 1337  # Local L1 chain ID
   
   # Rollup configuration
-  rollup_mode: "rollup"  # Options: "rollup" or "anytrust"
+  rollup_mode: true  # true for rollup, false for anytrust
   challenge_period_blocks: 20
   stake_token: "0x0000000000000000000000000000000000000000"  # ETH as stake token
-  base_stake: "0x0"
+  base_stake: "0"  # Minimum stake amount
   
-  # Key management (default key provided for development)
-  # Warning: Do not use this key for production environments
-  # Note: If providing custom keys, you MUST also provide the corresponding address
-  owner_private_key: "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
-  owner_address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"  # Must be the address derived from the above private key
+  # Account configuration
+  # WARNING: These are development keys - NEVER use in production!
+  # If you provide custom keys, you MUST also provide the corresponding addresses
+  owner_private_key: "dc04c5399f82306ec4b4d654a342f40e2e0620fe39950d967e1e574b32d4dd36"
+  owner_address: "0x5E1497dD1f08C87b2d8FE23e9AAB6c1De833D927"
   
-  # Services configuration
-  validator_count: 1  # Multiple validators not fully supported yet
-  enable_bridge: true
-  enable_explorer: true  # Enable explorer for easier debugging
+  sequencer_private_key: "cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65"
+  sequencer_address: "0xe2148eE53c0755215Df69b2616E552154EdC584f"
   
-  # Docker images
-  nitro_image: "offchainlabs/nitro-node:v3.5.5-90ee45c"
+  validator_private_key: "182fecf15bdf909556a0f617a63e05ab22f1493d25a9f1e27c228266c772a890"
+  validator_address: "0x6A568afe0f82d34759347bb36F14A6bB171d2CBe"
   
-  # Optional prefunding - addresses to prefund with ETH on L1
+  # Node configuration
+  simple_mode: false  # Run separate sequencer, validator, and batch poster
+  validator_count: 1  # Number of validators (max 1 currently supported)
+  
+  # Services
+  enable_bridge: true  # Deploy token bridge
+  enable_explorer: true  # Deploy Blockscout explorer
+  enable_timeboost: false  # Experimental feature
+  
+  # Pre-funded accounts (these get ETH on both L1 and L2)
+  pre_fund_accounts: ["funnel", "sequencer", "validator", "l2owner"]
+  
+  # Additional addresses to prefund with ETH on L1
   prefund_addresses: [
     "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
   ]
   
-  # AnyTrust specific configuration (only used if rollup_mode is "anytrust")
-  anytrust_config:
-    enable_local_das: true
-    das_members: []
+  # Docker images and versions
+  nitro_image: "offchainlabs/nitro-node:v3.5.5-90ee45c"
+  nitro_contracts_branch: "v2.1.1-beta.0"
+  token_bridge_branch: "v1.2.2"

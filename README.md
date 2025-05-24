@@ -1,104 +1,100 @@
 # Kurtosis-Orbit
 
-A Kurtosis package that deploys a full Arbitrum Orbit stack with a single command.
+> Deploy and manage Arbitrum Orbit chains with ease using Kurtosis
 
-## Overview
+Kurtosis-Orbit is a comprehensive deployment tool that allows you to spin up complete Arbitrum Orbit rollup environments in minutes. Built on top of [Kurtosis](https://kurtosis.com/), it provides a simple, reproducible way to deploy L2 chains for development, testing, and experimentation.
 
-Kurtosis-Orbit provides a one-command deployment of a complete Arbitrum Orbit environment for development and testing. It includes:
+## ✨ Features
 
-- A local Ethereum L1 chain
-- Arbitrum Nitro L2 rollup chain (sequencer, validator, batch poster)
-- Bridge contracts between L1 and L2
-- Optional block explorer
+- **🚀 One-command deployment** - Deploy a complete Orbit stack with a single command
+- **🔧 Highly configurable** - Customize chain parameters, rollup mode, and infrastructure settings
+- **🔑 Pre-funded accounts** - Development accounts with ETH ready for immediate testing
+- **🌉 Bridge integration** - Built-in token bridge between L1 and L2
+- **📊 Monitoring ready** - Optional Blockscout explorer for transaction monitoring
+- **🐳 Docker & Kubernetes** - Run locally with Docker or scale on Kubernetes
 
-This dramatically simplifies the setup process for developers who want to experiment with Arbitrum Orbit chains.
+## 🚀 Quick Start
 
-## Requirements
+### Prerequisites
 
-- Docker (>= 4.27.0 for Mac users)
-- [Kurtosis CLI](https://docs.kurtosis.com/install)
+- [Docker](https://docs.docker.com/get-docker/) with 8GB+ RAM allocated
+- [Kurtosis CLI](https://docs.kurtosis.com/install) installed
 
-## Quick Start
-
-Deploy a default Orbit chain:
-
-```bash
-kurtosis run github.com/arbitrumfoundation/kurtosis-orbit
-```
-
-Deploy with custom configuration:
+### Deploy Your First Orbit Chain
 
 ```bash
-kurtosis run github.com/arbitrumfoundation/kurtosis-orbit --args-file orbit-config.yml
+# Start Kurtosis engine
+kurtosis engine start
+
+# Deploy default Orbit chain
+kurtosis run github.com/justmert/kurtosis-orbit
+
+# Access your chain (ports will be shown in output)
+# Example: http://localhost:PORT for RPC access
 ```
 
-## Configuration
+### Deploy with Custom Configuration
 
-You can customize your Orbit chain by providing a YAML configuration file. Here's an example:
-
-```yaml
+```bash
+# Create custom config
+cat << EOF > my-config.yml
 orbit_config:
-  chain_name: "MyOrbitChain"
-  chain_id: 412346
-  rollup_mode: "rollup"
-  challenge_period_blocks: 20
-  owner_private_key: "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
-  validator_count: 1
-  enable_bridge: true
+  chain_name: "MyDevChain"
+  chain_id: 999888
   enable_explorer: true
+EOF
+
+# Deploy with custom settings
+kurtosis run github.com/justmert/kurtosis-orbit --args-file my-config.yml
 ```
 
-### Configuration Options
+## 🏗️ What You Get
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `chain_name` | Name of the Orbit chain | "OrbitDevChain" |
-| `chain_id` | Chain ID for the L2 | 412346 |
-| `l1_chain_id` | Chain ID for the L1 devnet | 1337 |
-| `rollup_mode` | "rollup" or "anytrust" | "rollup" |
-| `challenge_period_blocks` | Number of blocks for challenge period | 20 |
-| `stake_token` | Address of token used for staking | ETH (address 0) |
-| `base_stake` | Minimum stake required | "0x0" |
-| `owner_private_key` | Private key for chain owner | Default dev key |
-| `validator_count` | Number of validators to run | 1 |
-| `enable_bridge` | Enable token bridge | true |
-| `enable_explorer` | Enable block explorer | false |
-| `nitro_image` | Docker image for Nitro nodes | Latest stable version |
+After deployment, you'll have a complete Arbitrum Orbit environment including:
 
-## Accessing Your Orbit Chain
+- **L1 Ethereum chain** (local Geth + Lighthouse)
+- **Arbitrum Orbit L2 chain** (sequencer + validator)
+- **Token bridge** for L1 ↔ L2 transfers
+- **Pre-funded accounts** with 1000 ETH each
+- **Optional block explorer** (Blockscout)
 
-After deployment, the connection information will be displayed:
+## 🔑 Development Accounts
 
-```
-Orbit L2 Chain Deployment Completed
----------------------------------
-Ethereum L1 RPC: http://el-1-geth-lighthouse:8545
-Orbit L2 RPC: http://orbit-sequencer:8547
-Orbit L2 Chain ID: 412346
-Block Explorer: http://orbit-explorer:4000
+Ready-to-use accounts for testing:
 
-Add to MetaMask:
-1. Network Name: OrbitDevChain
-2. RPC URL: http://orbit-sequencer:8547
-3. Chain ID: 412346
-4. Currency Symbol: ETH
-```
+| Account | Address | Private Key | Purpose |
+|---------|---------|-------------|---------|
+| Funnel | `0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E` | `b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659` | General testing |
+| Sequencer | `0xe2148eE53c0755215Df69b2616E552154EdC584f` | `cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65` | Sequencer operations |
 
-To access the RPC endpoints from your host machine:
+> ⚠️ **Warning**: These are development keys only. Never use for real value!
 
-```bash
-kurtosis port forward <enclave-name> orbit-sequencer rpc
-```
+## 📖 Documentation
 
-## Development
+- **[Getting Started Guide](./docs/getting-started.md)** - Step-by-step deployment walkthrough
+- **[Installation Guide](./docs/installation.md)** - Detailed installation instructions
+- **[Configuration Reference](./docs/configuration.md)** - All available configuration options
+- **[Account Management](./docs/accounts.md)** - Working with development accounts
+- **[Architecture Overview](./docs/architecture.md)** - How Kurtosis-Orbit works
+- **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
 
-To contribute to this package:
+## 🛠️ Use Cases
 
-1. Clone the repository
-2. Make your changes
-3. Test locally with `kurtosis run .`
-4. Submit a pull request
+- **Arbitrum Development** - Test your dApps on a local Orbit chain
+- **Integration Testing** - Validate cross-chain functionality
+- **Research & Education** - Learn about Arbitrum rollup architecture
+- **Protocol Experimentation** - Try different rollup configurations
 
-## License
+## 🤝 Contributing
 
-Apache 2.0
+We welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [Kurtosis Documentation](https://docs.kurtosis.com/)
+- [Arbitrum Documentation](https://docs.arbitrum.io/)
+- [Arbitrum Orbit](https://arbitrum.io/orbit)

@@ -20,14 +20,11 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
                 }
             ),
             cmd=[
-                "sh", "-c",
-                """
-                echo 'Starting token bridge deployment...'
-                yarn deploy:local:token-bridge
-                cp network.json l1l2_network.json
-                echo 'Token bridge deployment completed!'
-                tail -f /dev/null
-                """
+                "sh", "-c", 
+                "echo 'Starting token bridge deployment...' && " +
+                "yarn deploy:local:token-bridge && " +
+                "echo 'Token bridge deployment completed' &&" +
+                "tail -f /dev/null" 
             ],
             env_vars={
                 "ROLLUP_OWNER_KEY": "0x" + config.owner_private_key,
@@ -40,18 +37,26 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
         ),
     )
     
-    # Wait for deployment
+    # Wait for the deployment to complete by checking for network.json file
     plan.wait(
         service_name="token-bridge-deployer",
         recipe=ExecRecipe(
-            command=["test", "-f", "/workspace/network.json"]
+            command=["sh", "-c", "test -f /workspace/network.json"]
         ),
         field="code",
         assertion="==",
         target_value=0,
-        timeout="10m",
+        timeout="10m",  # Token bridge deployment can take time
     )
     
+    # Copy the network configuration files
+    plan.exec(
+        service_name="token-bridge-deployer",
+        recipe=ExecRecipe(
+            command=["sh", "-c", "cp /workspace/network.json /workspace/l1l2_network.json && cp /workspace/network.json /workspace/localNetwork.json"]
+        )
+    )
+
     # Store network configuration
     network_artifact = plan.store_service_files(
         service_name="token-bridge-deployer",

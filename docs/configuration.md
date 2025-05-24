@@ -1,104 +1,118 @@
-# Configuration Options
+# Configuration Guide
 
-This document details all available configuration options for Kurtosis Orbit deployments.
+This guide explains all configuration options available in Kurtosis-Orbit.
 
-## Configuration File Structure
+## Configuration File Format
 
-The configuration file is in YAML format and consists of several sections:
-
-```yaml
-l1:
-  # L1 configuration options
-orbit:
-  # Orbit chain configuration options
-bridge:
-  # Token bridge configuration options
-explorer:
-  # Explorer configuration options
-```
-
-## L1 Configuration
-
-| Option | Description | Default | Required |
-|--------|-------------|---------|----------|
-| `chain_id` | Chain ID of the L1 network | `1` (Mainnet) | No |
-| `rpc_url` | HTTP RPC URL for the L1 | - | Yes (if not using local) |
-| `ws_url` | WebSocket URL for the L1 | - | No |
-| `local.enabled` | Deploy a local L1 node | `false` | No |
-| `local.type` | Type of local node (`geth`) | `geth` | No |
-| `local.version` | Version of the node software | `v1.12.0` | No |
-| `local.chain_id` | Chain ID for local node | `1337` | No |
-| `local.block_time` | Block time in seconds | `5` | No |
-| `local.gas_limit` | Block gas limit | `30000000` | No |
-| `local.premine` | Accounts to pre-fund | `[]` | No |
-
-## Orbit Chain Configuration
-
-| Option | Description | Default | Required |
-|--------|-------------|---------|----------|
-| `chain_id` | Chain ID of the Orbit chain | - | Yes |
-| `name` | Human-readable name for the chain | `"Orbit-Chain"` | No |
-| `consensus` | Consensus mechanism (`clique`) | `"clique"` | No |
-| `block_time` | Block time in seconds | `2` | No |
-| `gas_limit` | Block gas limit | `30000000` | No |
-| `premine` | Accounts to pre-fund | `[]` | No |
-| `validators` | Initial validator addresses | `[]` | Yes |
-| `genesis_params` | Additional genesis parameters | `{}` | No |
-
-### Premine Format
+Kurtosis-Orbit uses YAML configuration files with the following structure:
 
 ```yaml
-premine:
-  - address: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199"
-    amount: "1000000000000000000000"  # 1000 ETH in wei
+orbit_config:
+  # Configuration options go here
 ```
 
-## Token Bridge Configuration
+## Basic Configuration
 
-| Option | Description | Default | Required |
-|--------|-------------|---------|----------|
-| `enabled` | Enable token bridge | `true` | No |
-| `token_list` | List of tokens to bridge | `[]` | No |
-| `custom_tokens` | Custom tokens to deploy | `[]` | No |
-| `admin_address` | Bridge admin address | First validator | No |
-| `gas_limit` | Gas limit for bridge txs | `2000000` | No |
-| `confirmation_blocks` | Required confirmations | `12` | No |
-
-### Token List Format
+### Minimal Configuration
 
 ```yaml
-token_list:
-  - name: "WETH"
-    address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-  - name: "USDC"
-    address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+orbit_config:
+  chain_name: "MyOrbitChain"
+  chain_id: 412346
 ```
 
-### Custom Token Format
+### Using Configuration Files
 
-```yaml
-custom_tokens:
-  - name: "TestToken"
-    symbol: "TT"
-    decimals: 18
-    initial_supply: "1000000000000000000000000"
-    cap: "10000000000000000000000000"
+```bash
+# Use a configuration file
+kurtosis run github.com/justmert/kurtosis-orbit --args-file my-config.yml
+
+# Use environment variables
+CHAIN_ID=555666 kurtosis run github.com/justmert/kurtosis-orbit
 ```
 
-## Explorer Configuration
+## Configuration Options
 
-| Option | Description | Default | Required |
-|--------|-------------|---------|----------|
-| `enabled` | Enable block explorer | `true` | No |
-| `rpc_polling_interval` | Polling interval in seconds | `3` | No |
-| `port` | Explorer UI port | `4000` | No |
-| `ui_theme` | UI theme (`light`/`dark`) | `"light"` | No |
-| `features` | Enabled explorer features | All enabled | No |
-| `admin` | Admin user configuration | `{}` | No |
+### Chain Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `chain_name` | string | "Orbit-Dev-Chain" | Human-readable name for your chain |
+| `chain_id` | integer | 412346 | Unique chain ID (avoid conflicts) |
+| `l1_chain_id` | integer | 1337 | L1 chain ID (1337 for local) |
+
+### Rollup Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rollup_mode` | boolean | true | true=rollup, false=anytrust |
+| `challenge_period_blocks` | integer | 20 | Blocks for challenge period |
+| `stake_token` | address | "0x0000...0000" | Token for validator stakes |
+| `base_stake` | string | "0" | Minimum stake amount (wei) |
+
+### Account Configuration
+
+**⚠️ WARNING**: Default keys are for development only. Generate your own for production!
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `owner_private_key` | string | (dev key) | Chain owner private key |
+| `owner_address` | string | (derived) | MUST match private key |
+| `sequencer_private_key` | string | (dev key) | Sequencer private key |
+| `sequencer_address` | string | (derived) | MUST match private key |
+| `validator_private_key` | string | (dev key) | Validator private key |
+| `validator_address` | string | (derived) | MUST match private key |
+
+### Node Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `simple_mode` | boolean | true | Single node for all roles |
+| `validator_count` | integer | 1 | Number of validators (max 1) |
+| `enable_bridge` | boolean | true | Deploy token bridge |
+| `enable_explorer` | boolean | false | Deploy Blockscout |
+| `enable_timeboost` | boolean | false | Enable Timeboost (experimental) |
+
+### Funding Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `pre_fund_accounts` | array | ["funnel", "sequencer", "validator", "l2owner"] | Standard accounts to fund |
+| `prefund_addresses` | array | [] | Additional addresses to fund |
+
+### Image Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `nitro_image` | string | "offchainlabs/nitro-node:v3.5.5-90ee45c" | Nitro node Docker image |
+| `nitro_contracts_branch` | string | "v2.1.1-beta.0" | Contracts version |
+| `token_bridge_branch` | string | "v1.2.2" | Token bridge version |
 
 ## Example Configurations
 
-See the [examples directory](../config/examples/) for sample configurations:
+### Basic Development Setup
 
-- [Basic Configuration](../config/examples/basic.yml) - Minimal setup
-- [Full Configuration](../config/examples/full.yml) - All options demonstrated
+```yaml
+orbit_config:
+  chain_name: "DevChain"
+  chain_id: 999888
+  simple_mode: true
+  enable_explorer: true
+```
+
+### Custom Token Configuration
+
+```yaml
+orbit_config:
+  chain_name: "CustomTokenChain"
+  chain_id: 777888
+  
+  # Use USDC as stake token (example)
+  stake_token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  base_stake: "1000000000"  # 1000 USDC
+  
+  # Fund specific addresses
+  prefund_addresses:
+    - "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+    - "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199"
+```
