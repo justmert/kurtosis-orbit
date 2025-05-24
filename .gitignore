@@ -36,4 +36,4 @@ out/
 *.log
 *.tmp
 
-repomix-output.txt
+tests/
