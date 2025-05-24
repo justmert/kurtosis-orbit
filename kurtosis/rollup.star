@@ -87,38 +87,53 @@ def deploy_rollup_contracts(plan, config, l1_info):
                 }
             ),
             cmd=[
-                "/bin/sh",
+                "sh",
                 "-c",
-                # Wait for L1 and deploy contracts
-                """
-                echo 'Waiting for L1 to be ready...'
-                for i in {1..30}; do
-                    if curl -s -X POST -H 'Content-Type: application/json' \
-                        --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-                        $PARENT_CHAIN_RPC | grep -q result; then
-                        echo 'L1 is ready'
-                        break
-                    fi
-                    sleep 2
-                done
-                
-                # Wait for blocks
-                sleep 10
-                
-                # Deploy contracts
-                mkdir -p /config
-                cp /rollup/*.json /config/
-                yarn create-rollup-testnode
-                
-                echo 'Deployment complete!'
-                tail -f /dev/null
-                """
+                "apt-get update && apt-get install -y curl && " +
+                "echo 'Waiting for L1 node...' && " +
+                # First wait for basic response
+                "count=0 && " +
+                "while [ $count -lt 30 ]; do " +
+                    "response=$(curl -s -X POST -H 'Content-Type: application/json' " +
+                    "--data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}' " +
+                    "$PARENT_CHAIN_RPC) && " +
+                    "if echo \"$response\" | grep -q 'result'; then " +
+                        "echo 'L1 node is responding' && " +
+                        "break; " +
+                    "fi && " +
+                    "echo 'Waiting for L1 node to respond...' && " +
+                    "sleep 2 && " +
+                    "count=$((count+1)); " +
+                "done && " +
+                # Then wait for blocks to be mined
+                "echo 'Waiting for L1 to mine blocks...' && " +
+                "sleep 15 && " +  # Add an initial delay to let node stabilize
+                "count=0 && " +
+                "while [ $count -lt 30 ]; do " +
+                    "block_response=$(curl -s -X POST -H 'Content-Type: application/json' " +
+                    "--data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}' " +
+                    "$PARENT_CHAIN_RPC) && " +
+                    "if [ \"$?\" -eq 0 ] && echo \"$block_response\" | grep -q '\"result\":\"0x[1-9a-f]'; then " +
+                        "echo 'L1 has mined blocks beyond genesis' && " +
+                        "break; " +
+                    "fi && " +
+                    "echo 'Waiting for L1 to mine blocks...' && " +
+                    "sleep 2 && " +
+                    "count=$((count+1)); " +
+                "done && " +
+                # Final delay and deploy
+                "echo 'Giving L1 a final moment to stabilize...' && " +
+                "sleep 5 && " +
+                "echo 'Proceeding with deployment' && " +
+                "mkdir -p /config && cp /rollup/rollup_config.json /config/ && cp /rollup/l2_chain_config.json /config/ && yarn create-rollup-testnode && "  +
+                "echo 'Deployment complete! Files created:' && ls -l /config/deployment.json /config/chain_info.json && " +
+                "tail -f /dev/null"
             ],
             files={
                 "/rollup": config_artifact,
             },
             env_vars={
-                "PARENT_CHAIN_RPC": "http://el-1-geth-lighthouse:8545",
+                "PARENT_CHAIN_RPC": l1_info["rpc_url"],
                 "DEPLOYER_PRIVKEY": config.owner_private_key,
                 "PARENT_CHAIN_ID": str(config.l1_chain_id),
                 "CHILD_CHAIN_NAME": config.chain_name,

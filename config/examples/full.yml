@@ -13,10 +13,12 @@ orbit_config:
   
   # Key management (default key provided for development)
   # Warning: Do not use this key for production environments
+  # Note: If providing custom keys, you MUST also provide the corresponding address
   owner_private_key: "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
+  owner_address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"  # Must be the address derived from the above private key
   
   # Services configuration
-  validator_count: 2  # Running multiple validators for better testing
+  validator_count: 1  # Multiple validators not fully supported yet
   enable_bridge: true
   enable_explorer: true  # Enable explorer for easier debugging
   

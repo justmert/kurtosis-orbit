@@ -63,14 +63,14 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
     l1_gateway = plan.exec(
         service_name="token-bridge-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /workspace/network.json | jq -r '.l1Network.tokenBridge.l1ERC20Gateway'"]
+            command=["sh", "-c", "cat /workspace/network.json | jq -r '.l2Network.tokenBridge.l1ERC20Gateway'"]
         ),
     )["output"].strip()
     
     l1_router = plan.exec(
         service_name="token-bridge-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "cat /workspace/network.json | jq -r '.l1Network.tokenBridge.l1GatewayRouter'"]
+            command=["sh", "-c", "cat /workspace/network.json | jq -r '.l2Network.tokenBridge.l1GatewayRouter'"]
         ),
     )["output"].strip()
     

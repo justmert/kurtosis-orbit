@@ -8,6 +8,12 @@ def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
     """
     plan.print("Deploying Nitro nodes...")
     
+    # Validate required artifacts
+    if "artifacts" not in rollup_info or "chain_info" not in rollup_info["artifacts"]:
+        fail("Error: Missing chain_info artifact in rollup_info. Deployment may have failed.")
+
+    plan.print("Using chain_info from rollup deployment")
+
     # Deploy validation node first (if validators are enabled)
     validation_node = None
     if config.validator_count > 0:
@@ -16,10 +22,45 @@ def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
     # Deploy sequencer
     sequencer = deploy_sequencer_node(plan, config, l1_info, rollup_info)
     
-    # Deploy validators
+    # ✅ CRITICAL: Wait for sequencer to be fully operational before starting validators
+    plan.print("Waiting for sequencer to be fully ready before starting validators...")
+    plan.wait(
+        service_name="orbit-sequencer",
+        recipe=PostHttpRequestRecipe(
+            port_id="rpc",
+            endpoint="",
+            content_type="application/json",
+            body='{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
+        ),
+        field="code",
+        assertion="==",
+        target_value=200,
+        timeout="5m",
+        interval="5s"
+    )
+  
+    # Now deploy validators one by one (not in parallel)
     validators = []
     for i in range(config.validator_count):
+        plan.print("Starting validator {} (waiting for previous to be ready)...".format(i))
         validator = deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, i)
+        
+        # ✅ Wait for this validator to be ready before starting the next
+        if i < config.validator_count - 1:  # Don't wait after the last one
+            plan.wait(
+                service_name="orbit-validator-{}".format(i),
+                recipe=PostHttpRequestRecipe(
+                    port_id="rpc",
+                    endpoint="",
+                    content_type="application/json",
+                    body='{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
+                ),
+                field="code",
+                assertion="==",
+                target_value=200,
+                timeout="3m"
+            )
+        
         validators.append(validator)
     
     return {
@@ -28,12 +69,15 @@ def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
         "validation_node": validation_node,
     }
 
+
 def deploy_sequencer_node(plan, config, l1_info, rollup_info):
     """
     Deploy Nitro sequencer node.
     """
     # Create sequencer configuration
+    # Add staker configuration for simple mode
     sequencer_config = {
+        "ensure-rollup-deployment": False,
         "parent-chain": {
             "connection": {
                 "url": "http://el-1-geth-lighthouse:8545"
@@ -63,6 +107,7 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                     "wait-for-l1-finality": False
                 }
             },
+            # ✅ ADD STAKER CONFIG FOR SIMPLE MODE
             "staker": {
                 "enable": config.simple_mode,
                 "dangerous": {
@@ -79,7 +124,7 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                     "port": 9642
                 }
             }
-        },
+        },        
         "execution": {
             "sequencer": {
                 "enable": True
@@ -100,7 +145,7 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
             "api": ["net", "web3", "eth", "debug", "txpool"]
         },
         "persistent": {
-            "chain": "/home/user/.arbitrum/local/nitro"
+            "chain": "/home/user/.arbitrum/sequencer/nitro"  # ← Unique path
         },
         "validation": {
             "wasm": {
@@ -133,18 +178,18 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                     number=8547,
                     transport_protocol="TCP",
                     application_protocol="http",
-                    wait="60s"
+                    wait="120s"  # ✅ CRITICAL: Give sequencer time to start
                 ),
                 "ws": PortSpec(
                     number=8548,
                     transport_protocol="TCP",
                     application_protocol="ws",
-                    wait="60s"
+                    wait="120s"  # ✅ CRITICAL: Give sequencer time to start
                 ),
                 "feed": PortSpec(
                     number=9642,
                     transport_protocol="TCP",
-                    wait=None
+                    wait="120s"  # ✅ CRITICAL: Give sequencer time to start
                 ),
             },
             cmd=[
@@ -169,18 +214,33 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                 field="code",
                 assertion="==",
                 target_value=200,
-                timeout="5m"
+                timeout="10m",    # ✅ Longer timeout
+                interval="10s",   # ✅ Less frequent checks
+
             ),
         ),
     )
     
+    plan.wait(
+        service_name="orbit-sequencer",
+        recipe=PostHttpRequestRecipe(
+            port_id="rpc",
+            endpoint="",
+            content_type="application/json",
+            body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}',
+        ),
+        field="code",
+        assertion="==",
+        target_value=200,
+        timeout="2m",
+    )
     plan.print("✅ Sequencer node is running!")
     
     return {
         "service": sequencer_service,
-        "rpc_url": "http://{}:{}".format(sequencer_service.hostname, 8547),
-        "ws_url": "ws://{}:{}".format(sequencer_service.hostname, 8548),
-        "feed_url": "ws://{}:{}".format(sequencer_service.hostname, 9642),
+        "rpc_url": "http://{}:{}".format(sequencer_service.hostname, sequencer_service.ports["rpc"].number),
+        "ws_url": "ws://{}:{}".format(sequencer_service.hostname, sequencer_service.ports["ws"].number),
+        "feed_url": "ws://{}:{}".format(sequencer_service.hostname, sequencer_service.ports["feed"].number),
     }
 
 def deploy_validation_node(plan, config, l1_info, rollup_info):
@@ -243,6 +303,16 @@ def deploy_validation_node(plan, config, l1_info, rollup_info):
         ),
     )
     
+    # Add readiness probe to ensure validation node is fully initialized
+    plan.wait(
+        service_name="validation-node",
+        recipe=ExecRecipe(command=["pgrep", "nitro-val"]),
+        field="code", 
+        assertion="==", 
+        target_value=0, 
+        timeout="30s"
+    )
+    
     plan.print("✅ Validation node is running!")
     
     return {
@@ -257,6 +327,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
     """
     # Create validator configuration
     validator_config = {
+        "ensure-rollup-deployment": False,  # Important: don't try to deploy rollup
         "parent-chain": {
             "connection": {
                 "url": "http://el-1-geth-lighthouse:8545"
@@ -319,8 +390,9 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
             "origins": "*",
             "api": ["net", "web3", "eth", "debug"]
         },
+        # In validator config:
         "persistent": {
-            "chain": "/home/user/.arbitrum/local/nitro"
+            "chain": "/home/user/.arbitrum/validator-{}/nitro".format(index)  # ← Unique path per validator
         },
         "validation": {
             "wasm": {
@@ -357,12 +429,13 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
                     number=8547,
                     transport_protocol="TCP",
                     application_protocol="http",
-                    wait="60s"
+                    wait="120s"  # ✅ ADD THIS - Validator needs time to start
                 ),
                 "ws": PortSpec(
                     number=8548,
                     transport_protocol="TCP",
-                    application_protocol="ws"
+                    application_protocol="ws",
+                    wait="120s"  # ✅ ADD THIS - Validator needs time to start
                 ),
             },
             cmd=[
@@ -384,7 +457,8 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
                 field="code",
                 assertion="==",
                 target_value=200,
-                timeout="3m"
+                timeout="10m",    # ✅ Longer timeout
+                interval="10s",   # ✅ Less frequent checks
             ),
         ),
     )
@@ -393,6 +467,6 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
     
     return {
         "service": validator_service,
-        "rpc_url": "http://{}:{}".format(validator_service.hostname, 8547),
-        "ws_url": "ws://{}:{}".format(validator_service.hostname, 8548),
+        "rpc_url": "http://{}:{}".format(validator_service.hostname,validator_service.ports["rpc"].number),
+        "ws_url": "ws://{}:{}".format(validator_service.hostname, validator_service.ports["ws"].number),
     }
