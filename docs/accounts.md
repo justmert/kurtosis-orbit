@@ -56,22 +56,6 @@ These accounts have special roles in the Orbit chain:
 - **Purpose**: Reserved for L3 deployments
 - **Balance**: 1000 ETH on L1
 
-### User Accounts
-
-These accounts are generated from usernames for testing:
-
-#### User Alice
-- **Address**: `0xC3c76AaAA7C483c5099aeC225bA5E4269373F16b`
-- **Private Key**: `5c5c2c164ead6e3f0aa2e8db343277538e644edf994cdf048ca5ca633c822d5e`
-
-#### User Bob
-- **Address**: `0x2EB27d9F51D90C45ea735eE3b68E9BE4AE2aB61f`
-- **Private Key**: `ab65119bd544c8557915190bd5254f6462372c6633b4aba337c38ca59bb11793`
-
-#### User Charlie
-- **Address**: `0x940Cfa73a2453C0551059291F680c2779A089d92`
-- **Private Key**: `631510336d296d16760c135afdba16256a3c9cc7d5a99dd4ec1941c738382e10`
-
 ## Using Accounts
 
 ### Import to MetaMask
