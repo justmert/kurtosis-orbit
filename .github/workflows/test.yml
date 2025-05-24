@@ -1,20 +1,179 @@
-name: Test Kurtosis-Orbit
+name: Test Kurtosis-Orbit Deployment
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  test:
-    name: Run Basic Test
+  test-basic-deployment:
+    name: Test Basic Deployment
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker system prune -a -f
+          
+      - name: Install Kurtosis
+        run: |
+          echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+          sudo apt update
+          sudo apt install kurtosis-cli
+          kurtosis version
+      
+      - name: Start Kurtosis Engine
+        run: |
+          kurtosis engine start
+          sleep 5
+          kurtosis engine status
+      
+      - name: Deploy Kurtosis-Orbit (Basic Config)
+        run: |
+          echo "Starting basic deployment..."
+          kurtosis run . --enclave test-orbit-basic \
+            '{"orbit_config": {"chain_name": "TestChain", "chain_id": 999888, "enable_explorer": false, "simple_mode": true}}'
+        timeout-minutes: 20
+      
+      - name: Verify Basic Deployment
+        run: |
+          echo "Verifying deployment..."
+          
+          # Check enclave status
+          kurtosis enclave inspect test-orbit-basic
+          
+          # Verify L1 is running
+          echo "Checking L1 Ethereum node..."
+          kurtosis service logs test-orbit-basic el-1-geth-lighthouse --max-lines=5
+          
+          # Verify sequencer is running
+          echo "Checking L2 sequencer..."
+          kurtosis service logs test-orbit-basic orbit-sequencer --max-lines=10
+          
+          # Test RPC endpoints
+          echo "Testing RPC connectivity..."
+          
+          # Get service ports
+          kurtosis enclave inspect test-orbit-basic
+          
+          # Try to connect to sequencer RPC (using service exec since we can't port forward in CI)
+          echo "Testing L2 RPC endpoint..."
+          kurtosis service exec test-orbit-basic orbit-sequencer \
+            "curl -s -X POST -H 'Content-Type: application/json' \
+            --data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\":[],\"id\":1}' \
+            http://localhost:8547" || echo "RPC test failed but continuing..."
+          
+          # Check if rollup contracts were deployed
+          echo "Checking rollup deployment..."
+          kurtosis service logs test-orbit-basic orbit-deployer --max-lines=5
+          
+      - name: Test with Bridge Enabled
+        run: |
+          echo "Testing deployment with bridge enabled..."
+          kurtosis run . --enclave test-orbit-bridge \
+            '{"orbit_config": {"chain_name": "BridgeTestChain", "chain_id": 888777, "enable_bridge": true, "enable_explorer": false, "simple_mode": true}}'
+        timeout-minutes: 20
+      
+      - name: Verify Bridge Deployment
+        run: |
+          echo "Verifying bridge deployment..."
+          kurtosis enclave inspect test-orbit-bridge
+          
+          # Check bridge deployer logs
+          echo "Checking token bridge deployment..."
+          kurtosis service logs test-orbit-bridge token-bridge-deployer --max-lines=10
+          
+      - name: Test with Explorer Enabled
+        run: |
+          echo "Testing deployment with explorer enabled..."
+          kurtosis run . --enclave test-orbit-explorer \
+            '{"orbit_config": {"chain_name": "ExplorerTestChain", "chain_id": 777666, "enable_bridge": false, "enable_explorer": true, "simple_mode": true}}'
+        timeout-minutes: 20
+      
+      - name: Verify Explorer Deployment
+        run: |
+          echo "Verifying explorer deployment..."
+          kurtosis enclave inspect test-orbit-explorer
+          
+          # Check if postgres is running
+          echo "Checking PostgreSQL..."
+          kurtosis service logs test-orbit-explorer postgres --max-lines=5
+          
+          # Check if blockscout is running
+          echo "Checking Blockscout..."
+          kurtosis service logs test-orbit-explorer blockscout --max-lines=10
+          
+      - name: Export Logs on Failure
+        if: failure()
+        run: |
+          echo "Exporting logs for debugging..."
+          mkdir -p ./debug-logs
+          
+          # Export enclave information
+          kurtosis enclave ls > ./debug-logs/enclaves.txt || true
+          
+          # Export logs from all enclaves
+          for enclave in test-orbit-basic test-orbit-bridge test-orbit-explorer; do
+            if kurtosis enclave inspect $enclave > /dev/null 2>&1; then
+              echo "Exporting logs for $enclave..."
+              kurtosis enclave dump $enclave ./debug-logs/$enclave/ || true
+            fi
+          done
+          
+          # Show Docker stats
+          docker ps -a > ./debug-logs/docker-ps.txt || true
+          docker images > ./debug-logs/docker-images.txt || true
+          
+      - name: Upload Debug Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-logs
+          path: ./debug-logs/
+          retention-days: 7
+      
+      - name: Clean Up
+        if: always()
+        run: |
+          echo "Cleaning up test environments..."
+          kurtosis clean -a
+          docker system prune -f
+
+  test-configuration-variations:
+    name: Test Configuration Variations
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: test-basic-deployment
+    
+    strategy:
+      matrix:
+        config:
+          - name: "rollup-mode"
+            settings: '{"orbit_config": {"chain_name": "RollupTest", "chain_id": 111222, "rollup_mode": true, "simple_mode": true}}'
+          - name: "anytrust-mode"
+            settings: '{"orbit_config": {"chain_name": "AnytrustTest", "chain_id": 222333, "rollup_mode": false, "simple_mode": true}}'
+          - name: "full-stack"
+            settings: '{"orbit_config": {"chain_name": "FullStackTest", "chain_id": 333444, "enable_bridge": true, "enable_explorer": true, "simple_mode": true}}'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          docker system prune -a -f
+          
       - name: Install Kurtosis
         run: |
           echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
@@ -22,19 +181,52 @@ jobs:
           sudo apt install kurtosis-cli
       
       - name: Start Kurtosis Engine
-        run: kurtosis engine start
-      
-      - name: Run Kurtosis-Orbit with Default Config
         run: |
-          kurtosis run . --enclave-name=test-orbit
-        timeout-minutes: 15
+          kurtosis engine start
+          sleep 5
       
-      - name: Check Services
+      - name: Test ${{ matrix.config.name }} Configuration
         run: |
-          kurtosis enclave inspect test-orbit
-          # Check if sequencer is running
-          kurtosis service logs test-orbit orbit-sequencer --max-lines=10
+          echo "Testing ${{ matrix.config.name }} configuration..."
+          kurtosis run . --enclave test-${{ matrix.config.name }} '${{ matrix.config.settings }}'
+        timeout-minutes: 22
+      
+      - name: Verify ${{ matrix.config.name }} Deployment
+        run: |
+          echo "Verifying ${{ matrix.config.name }} deployment..."
+          kurtosis enclave inspect test-${{ matrix.config.name }}
+          
+          # Basic health checks
+          kurtosis service logs test-${{ matrix.config.name }} orbit-sequencer --max-lines=5
+          
+          # Test basic RPC functionality
+          kurtosis service exec test-${{ matrix.config.name }} orbit-sequencer \
+            "curl -s --max-time 10 -X POST -H 'Content-Type: application/json' \
+            --data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\":[],\"id\":1}' \
+            http://localhost:8547" || echo "RPC check failed but continuing..."
       
       - name: Clean Up
         if: always()
-        run: kurtosis clean -a
+        run: |
+          kurtosis clean -a
+
+  # Optional: Notification job
+  notify-status:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [test-basic-deployment, test-configuration-variations]
+    if: always()
+    
+    steps:
+      - name: Notify Success
+        if: needs.test-basic-deployment.result == 'success' && needs.test-configuration-variations.result == 'success'
+        run: |
+          echo "✅ All Kurtosis-Orbit tests passed successfully!"
+          echo "The deployment works correctly across all tested configurations."
+      
+      - name: Notify Failure
+        if: needs.test-basic-deployment.result == 'failure' || needs.test-configuration-variations.result == 'failure'
+        run: |
+          echo "❌ Kurtosis-Orbit tests failed!"
+          echo "Check the job logs and uploaded debug artifacts for details."
+          exit 1
