@@ -1,6 +1,8 @@
 """
-Nitro node deployment module with nitro-testnode alignment.
+Nitro node deployment module with proper L2 funding.
 """
+
+config_module = import_module("./config.star")
 
 def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
     """
@@ -16,7 +18,7 @@ def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
 
     # Deploy validation node first (if validators are enabled)
     validation_node = None
-    if config.validator_count > 0:
+    if config["validator_count"] > 0:
         validation_node = deploy_validation_node(plan, config, l1_info, rollup_info)
     
     # Deploy sequencer
@@ -41,12 +43,12 @@ def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
   
     # Now deploy validators one by one (not in parallel)
     validators = []
-    for i in range(config.validator_count):
+    for i in range(config["validator_count"]):
         plan.print("Starting validator {} (waiting for previous to be ready)...".format(i))
         validator = deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, i)
         
         # ✅ Wait for this validator to be ready before starting the next
-        if i < config.validator_count - 1:  # Don't wait after the last one
+        if i < config["validator_count"] - 1:  # Don't wait after the last one
             plan.wait(
                 service_name="orbit-validator-{}".format(i),
                 recipe=PostHttpRequestRecipe(
@@ -69,7 +71,6 @@ def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
         "validation_node": validation_node,
     }
 
-
 def deploy_sequencer_node(plan, config, l1_info, rollup_info):
     """
     Deploy Nitro sequencer node.
@@ -84,24 +85,24 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
             }
         },
         "chain": {
-            "id": config.chain_id,
+            "id": config["chain_id"],
             "info-files": ["/chain-info/chain_info.json"]
         },
         "node": {
             "sequencer": True,
             "dangerous": {
-                "no-sequencer-coordinator": config.simple_mode,
+                "no-sequencer-coordinator": config["simple_mode"],
                 "disable-blob-reader": True
             },
             "delayed-sequencer": {
                 "enable": True
             },
             "batch-poster": {
-                "enable": config.simple_mode,
+                "enable": config["simple_mode"],
                 "max-delay": "30s",
                 "l1-block-bound": "ignore",
                 "parent-chain-wallet": {
-                    "private-key": config.sequencer_private_key
+                    "private-key": config["sequencer_private_key"]
                 },
                 "data-poster": {
                     "wait-for-l1-finality": False
@@ -109,15 +110,15 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
             },
             # ✅ ADD STAKER CONFIG FOR SIMPLE MODE
             "staker": {
-                "enable": config.simple_mode,
+                "enable": config["simple_mode"],
                 "dangerous": {
                     "without-block-validator": True
                 },
                 "parent-chain-wallet": {
-                    "private-key": config.validator_private_key
+                    "private-key": config["validator_private_key"]
                 },
                 "use-smart-contract-wallet": True
-            } if config.simple_mode else {},
+            } if config["simple_mode"] else {},
             "feed": {
                 "output": {
                     "enable": True,
@@ -172,7 +173,7 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
     sequencer_service = plan.add_service(
         name="orbit-sequencer",
         config=ServiceConfig(
-            image=config.nitro_image,
+            image=config["nitro_image"],
             ports={
                 "rpc": PortSpec(
                     number=8547,
@@ -277,7 +278,7 @@ def deploy_validation_node(plan, config, l1_info, rollup_info):
                 data={},
             ),
             "val_jwt.hex": struct(
-                template=config.val_jwt_secret,
+                template=config["val_jwt_secret"],
                 data={},
             ),
         },
@@ -287,7 +288,7 @@ def deploy_validation_node(plan, config, l1_info, rollup_info):
     validation_service = plan.add_service(
         name="validation-node",
         config=ServiceConfig(
-            image=config.nitro_image,
+            image=config["nitro_image"],
             entrypoint=["/usr/local/bin/nitro-val"],
             cmd=["--conf.file=/config/validation_node_config.json"],
             ports={
@@ -318,7 +319,7 @@ def deploy_validation_node(plan, config, l1_info, rollup_info):
     return {
         "service": validation_service,
         "url": "http://{}:{}".format(validation_service.hostname, 8549),
-        "jwt": config.val_jwt_secret,
+        "jwt": config["val_jwt_secret"],
     }
 
 def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, index):
@@ -334,7 +335,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
             }
         },
         "chain": {
-            "id": config.chain_id,
+            "id": config["chain_id"],
             "info-files": ["/chain-info/chain_info.json"]
         },
         "node": {
@@ -349,7 +350,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
                     "without-block-validator": False
                 },
                 "parent-chain-wallet": {
-                    "private-key": config.validator_private_key
+                    "private-key": config["validator_private_key"]
                 },
                 "use-smart-contract-wallet": True
             },
@@ -413,7 +414,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
                 data={},
             ),
             "val_jwt.hex": struct(
-                template=config.val_jwt_secret,
+                template=config["val_jwt_secret"],
                 data={},
             ),
         },
@@ -423,7 +424,7 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
     validator_service = plan.add_service(
         name="orbit-validator-{}".format(index),
         config=ServiceConfig(
-            image=config.nitro_image,
+            image=config["nitro_image"],
             ports={
                 "rpc": PortSpec(
                     number=8547,

@@ -24,7 +24,7 @@ def deploy_ethereum_l1(plan, config):
         ],
         "network_params": {
             "network": "kurtosis",
-            "network_id": str(config.l1_chain_id),
+            "network_id": str(config["l1_chain_id"]),
             "seconds_per_slot": 3,
             "genesis_delay": 10,
             "preset": "minimal",
@@ -59,7 +59,7 @@ def deploy_ethereum_l1(plan, config):
     return {
         "rpc_url": el_client.rpc_http_url,
         "ws_url": el_client.ws_url,
-        "chain_id": config.l1_chain_id,
+        "chain_id": config["l1_chain_id"],
         "network_id": ethereum_result.network_id,
         "prefunded_accounts": ethereum_result.pre_funded_accounts,
     }

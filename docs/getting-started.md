@@ -93,36 +93,41 @@ kurtosis port forward <enclave-name> el-1-geth-lighthouse rpc
 
 Import these development accounts into MetaMask:
 
-**Funnel Account** (1000 ETH on L1 & L2)
+**Funnel Account** (10,000 ETH on L1 & L2)
 - Address: `0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E`
 - Private Key: `b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659`
 
-**Sequencer Account** (1000 ETH on L1 & L2)
+**Sequencer Account** (100 ETH on L1 & L2)
 - Address: `0xe2148eE53c0755215Df69b2616E552154EdC584f`
 - Private Key: `cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65`
 
-## Basic Usage Examples
+### Basic Usage - Using Helper Scripts
 
-### Deploy a Simple Contract
+The repository includes useful scripts for testing and development:
 
-```solidity
-// SimpleStorage.sol
-pragma solidity ^0.8.0;
+```bash
+# Navigate to the tests directory
+cd tests
+npm install
 
-contract SimpleStorage {
-    uint256 public value;
-    
-    function setValue(uint256 _value) public {
-        value = _value;
-    }
-}
+# Set up environment variables automatically
+npm run setup
+
+# Check account balances
+npm run check-balances
+
+# Deploy a test contract
+npm run deploy-contract
+
+# Interact with deployed contracts
+npm run interact-contract
+
+# Bridge ETH between L1 and L2
+npm run bridge-eth
+
+# Generate new development accounts
+npm run generate-accounts
 ```
-
-Deploy using Remix or Hardhat to your forwarded RPC endpoint.
-
-### Transfer ETH Between L1 and L2
-
-Use the deployed bridge contracts (addresses shown in deployment output) to transfer ETH between L1 and L2.
 
 ## Custom Configuration
 

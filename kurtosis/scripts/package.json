@@ -1,0 +1,16 @@
+{
+  "name": "l2-funding",
+  "version": "1.0.0",
+  "description": "L2 account funding utility for Arbitrum Orbit",
+  "main": "fund-accounts.js",
+  "dependencies": {
+    "ethers": "^5.7.2"
+  },
+  "scripts": {
+    "fund": "node fund-accounts.js",
+    "fund-all": "node fund-all.js"
+  },
+  "keywords": ["arbitrum", "orbit", "funding", "ethereum"],
+  "author": "Kurtosis Orbit",
+  "license": "MIT"
+} 

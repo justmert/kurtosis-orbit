@@ -1,0 +1,36 @@
+{
+  "name": "kurtosis-orbit-scripts",
+  "version": "1.0.0",
+  "description": "Helper scripts for Kurtosis-Orbit deployment",
+  "main": "setup-env.js",
+  "scripts": {
+    "setup": "node scripts/setup-env.js",
+    "check-balances": "node scripts/check-balances.js",
+    "deploy-contract": "node scripts/deploy-contract.js",
+    "interact-contract": "node scripts/interact-contract.js", 
+    "bridge-eth": "node scripts/bridge-eth.js",
+    "fund-accounts": "node scripts/fund-accounts.js",
+    "generate-accounts": "node scripts/generate-accounts.js",
+    "test-all": "npm run setup && npm run check-balances && npm run deploy-contract && npm run interact-contract"
+  },
+  "dependencies": {
+    "kurtosis-sdk": "1.7.1",
+    "ethers": "^6.0.0",
+    "dotenv": "^16.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.19.0"
+  },
+  "keywords": [
+    "kurtosis",
+    "arbitrum",
+    "orbit",
+    "blockchain",
+    "ethereum"
+  ],
+  "author": "Kurtosis-Orbit Team",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/justmert/kurtosis-orbit"
+  }
+}

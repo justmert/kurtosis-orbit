@@ -36,4 +36,9 @@ out/
 *.log
 *.tmp
 
-tests/
+_tests
+artifacts/
+cache/
+deployment.json
+bridge.json
+kurtosis-test

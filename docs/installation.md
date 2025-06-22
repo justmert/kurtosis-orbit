@@ -12,8 +12,10 @@ This guide provides detailed instructions for installing all prerequisites and t
 
 ### Software Requirements
 - Docker 20.10.0 or later
-- Kurtosis CLI (latest version recommended)
+- **Kurtosis CLI v1.7.1** (required for compatibility)
 - Git (for local development)
+
+**⚠️ Important**: Kurtosis-Orbit requires exactly version 1.7.1 of the Kurtosis CLI. Other versions may not be compatible.
 
 ## Installing Docker
 
@@ -63,14 +65,15 @@ newgrp docker
 
 ## Installing Kurtosis CLI
 
-### Option 1: Homebrew (macOS/Linux)
+### Option 1: Homebrew (macOS/Linux) - Recommended
 ```bash
-brew install kurtosis-tech/tap/kurtosis-cli
+brew install kurtosis-tech/tap/kurtosis-cli@1.7.1
 ```
 
 ### Option 2: Install Script
 ```bash
-# Download and run the install script
+# Note: This installs the latest version, which may not be 1.7.1
+# Use Option 1 or 3 for version 1.7.1 specifically
 curl -s https://get.kurtosis.com | bash
 
 # The script will add Kurtosis to your PATH
@@ -78,19 +81,20 @@ curl -s https://get.kurtosis.com | bash
 source ~/.bashrc  # or ~/.zshrc
 ```
 
-### Option 3: Manual Installation
+### Option 3: Manual Installation (Version 1.7.1)
 ```bash
-# Download the latest release from GitHub
-# Replace VERSION and PLATFORM accordingly
-wget https://github.com/kurtosis-tech/kurtosis/releases/download/VERSION/kurtosis-cli_VERSION_PLATFORM.tar.gz
+# Download version 1.7.1 specifically
+# Replace PLATFORM with: linux_amd64, darwin_amd64, or darwin_arm64
+PLATFORM="linux_amd64"  # Change as needed
+wget https://github.com/kurtosis-tech/kurtosis/releases/download/1.7.1/kurtosis-cli_1.7.1_${PLATFORM}.tar.gz
 
 # Extract
-tar -xzf kurtosis-cli_VERSION_PLATFORM.tar.gz
+tar -xzf kurtosis-cli_1.7.1_${PLATFORM}.tar.gz
 
 # Move to PATH
 sudo mv kurtosis /usr/local/bin/
 
-# Verify installation
+# Verify installation (should show 1.7.1)
 kurtosis version
 ```
 

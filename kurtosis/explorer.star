@@ -2,9 +2,6 @@
 Blockscout explorer deployment module.
 """
 
-BLOCKSCOUT_VERSION = "offchainlabs/blockscout:v1.1.0-0e716c8"
-POSTGRES_VERSION = "postgres:13.6"
-
 def deploy_blockscout(plan, config, nodes_info):
     """
     Deploy Blockscout explorer for the L2 chain.
@@ -15,7 +12,7 @@ def deploy_blockscout(plan, config, nodes_info):
     postgres_service = plan.add_service(
         name="postgres",
         config=ServiceConfig(
-            image=POSTGRES_VERSION,
+            image=config["postgres_image"],
             ports={
                 "postgres": PortSpec(number=5432),
             },
@@ -66,7 +63,7 @@ def deploy_blockscout(plan, config, nodes_info):
     blockscout_service = plan.add_service(
         name="blockscout",
         config=ServiceConfig(
-            image=BLOCKSCOUT_VERSION,
+            image=config["blockscout_image"],
             ports={
                 "http": PortSpec(
                     number=4000,
@@ -91,8 +88,8 @@ def deploy_blockscout(plan, config, nodes_info):
                 "DATABASE_URL": "postgresql://postgres:@postgres:5432/blockscout",
                 "ECTO_USE_SSL": "false",
                 "NETWORK": "Arbitrum",
-                "SUBNETWORK": config.chain_name,
-                "CHAIN_ID": str(config.chain_id),
+                "SUBNETWORK": config["chain_name"],
+                "CHAIN_ID": str(config["chain_id"]),
                 "PORT": "4000",
                 "HOST": "0.0.0.0",
                 "MIX_ENV": "prod",

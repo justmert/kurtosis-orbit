@@ -16,7 +16,7 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
                 image_name="tokenbridge",
                 build_context_dir="./tokenbridge",
                 build_args={
-                    "TOKEN_BRIDGE_BRANCH": config.token_bridge_branch
+                    "TOKEN_BRIDGE_BRANCH": config["token_bridge_branch"]
                 }
             ),
             cmd=[
@@ -27,11 +27,11 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
                 "tail -f /dev/null" 
             ],
             env_vars={
-                "ROLLUP_OWNER_KEY": "0x" + config.owner_private_key,
+                "ROLLUP_OWNER_KEY": "0x" + config["owner_private_key"],
                 "ROLLUP_ADDRESS": rollup_info["rollup_address"],
-                "PARENT_KEY": "0x" + config.owner_private_key,
+                "PARENT_KEY": "0x" + config["owner_private_key"],
                 "PARENT_RPC": l1_info["rpc_url"],
-                "CHILD_KEY": "0x" + config.owner_private_key,
+                "CHILD_KEY": "0x" + config["owner_private_key"],
                 "CHILD_RPC": nodes_info["sequencer"]["rpc_url"],
             },
         ),

@@ -5,60 +5,83 @@ Configuration module with validation and nitro-testnode alignment.
 # Standard test mnemonic used by nitro-testnode (same as Hardhat/Ganache)
 L1_MNEMONIC = "indoor dish desk flag debris potato excuse depart ticket judge file exit"
 
-# 👤 EXAMPLE USER ACCOUNTS (generated from username):
-# =====================================================
-
-# === USER_ALICE ===
-# Address:     0xC3c76AaAA7C483c5099aeC225bA5E4269373F16b
-# Private Key: 0x5c5c2c164ead6e3f0aa2e8db343277538e644edf994cdf048ca5ca633c822d5e
-
-# === USER_BOB ===
-# Address:     0x2EB27d9F51D90C45ea735eE3b68E9BE4AE2aB61f
-# Private Key: 0xab65119bd544c8557915190bd5254f6462372c6633b4aba337c38ca59bb11793
-
-# === USER_CHARLIE ===
-# Address:     0x940Cfa73a2453C0551059291F680c2779A089d92
-# Private Key: 0x631510336d296d16760c135afdba16256a3c9cc7d5a99dd4ec1941c738382e10
-
-# === USER_DAVID ===
-# Address:     0x061D1D7DB2087D1dBCc7a551b96727746948017A
-# Private Key: 0xd3d398862cb51dc21c2cbcddd411080101c6c2b5b12aacd8050ade241868e4f3
-
-# === USER_EVE ===
-# Address:     0xF2425902e61c32569075cA534c3C1a0Ae367EA0D
-# Private Key: 0x8cad62e2f7ee3f66664fdb44c5e39ffb929466484d639974a6a1c344af21a614
-
-# Derived from mnemonic
+# Derived from mnemonic - these are the core accounts used by the system
 STANDARD_ACCOUNTS = {
     "funnel": {
         "private_key": "b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659",
-        "address": "0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E"
+        "address": "0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E",
+        "description": "General funding and testing account"
     },
     "sequencer": {
         "private_key": "cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65",
-        "address": "0xe2148eE53c0755215Df69b2616E552154EdC584f"
+        "address": "0xe2148eE53c0755215Df69b2616E552154EdC584f",
+        "description": "Operates the sequencer node"
     },
     "validator": {
         "private_key": "182fecf15bdf909556a0f617a63e05ab22f1493d25a9f1e27c228266c772a890",
-        "address": "0x6A568afe0f82d34759347bb36F14A6bB171d2CBe"
+        "address": "0x6A568afe0f82d34759347bb36F14A6bB171d2CBe",
+        "description": "Operates validator nodes"
     },
     "l3owner": {
         "private_key": "ecdf21cb41c65afb51f91df408b7656e2c8739a5877f2814add0afd780cc210e",
-        "address": "0x863c904166E801527125D8672442D736194A3362"
+        "address": "0x863c904166E801527125D8672442D736194A3362",
+        "description": "L3 chain owner (for L3 deployments)"
     },
     "l3sequencer": {
-
         "private_key": "90f899754eb42949567d3576224bf533a20857bf0a60318507b75fcb3edc6f5f",
-        "address": "0x3E6134aAD4C4d422FF2A4391Dc315c4DDf98D1a5"
+        "address": "0x3E6134aAD4C4d422FF2A4391Dc315c4DDf98D1a5",
+        "description": "L3 sequencer (for L3 deployments)"
     },
     "l2owner": {
         "private_key": "dc04c5399f82306ec4b4d654a342f40e2e0620fe39950d967e1e574b32d4dd36",
-        "address": "0x5E1497dD1f08C87b2d8FE23e9AAB6c1De833D927"
+        "address": "0x5E1497dD1f08C87b2d8FE23e9AAB6c1De833D927",
+        "description": "L2 chain owner"
     },
 }
 
+# Default prefunded accounts for development
+DEFAULT_PREFUNDED_ACCOUNTS = [
+  {
+    "name": "Development account 1",
+    "address": "0x2093882c87B768469fbD434973bc7a4d20f73a51",
+    "privateKey": "0xe81662053657623793d767b6cb13e614f6c6916b1488de33928baea8ce513c4c",
+    "balance_eth": "100",
+    "description": "Development account 1"
+  },
+  {
+    "name": "Development account 2",
+    "address": "0x6D819ceDC7B20b8F755Ec841CBd5934812Cbe13b",
+    "privateKey": "0x203298e6a2b845c6dde179f3f991ae4c081ad963e20c9fe39d45893c00a0aea5",
+    "balance_eth": "100",
+    "description": "Development account 2"
+  },
+  {
+    "name": "Development account 3",
+    "address": "0xCE46e65a7A7527499e92337E5FBf958eABf314fa",
+    "privateKey": "0x237112963af91b42ca778fbe434a819b7e862cd025be3c86ce453bdd3e633165",
+    "balance_eth": "100",
+    "description": "Development account 3"
+  },
+  {
+    "name": "Development account 4",
+    "address": "0xdafa61604B4Aa82092E1407F8027c71026982E6f",
+    "privateKey": "0xdbd4bf6a5edb48b1819a2e94920c156ff8296670d5df72e4b8a22df0b6ce573d",
+    "balance_eth": "100",
+    "description": "Development account 4"
+  },
+  {
+    "name": "Development account 5",
+    "address": "0x1663f734483ceCB07AD6BC80919eA9a5cdDb7FE9",
+    "privateKey": "0xae804cd43a8471813628b123189674469b92e3874674e540b9567e9e986d394d",
+    "balance_eth": "100",
+    "description": "Development account 5"
+  }
+]
+
+
 # Default configuration aligned with nitro-testnode
 DEFAULT_CONFIG = {
+    # Chain configuration
     "chain_name": "Orbit-Dev-Chain",
     "chain_id": 412346,
     "l1_chain_id": 1337,
@@ -66,22 +89,34 @@ DEFAULT_CONFIG = {
     "challenge_period_blocks": 20,
     "stake_token": "0x0000000000000000000000000000000000000000",
     "base_stake": "0",
+    
+    # Account configuration
     "owner_private_key": STANDARD_ACCOUNTS["l2owner"]["private_key"],
     "owner_address": STANDARD_ACCOUNTS["l2owner"]["address"],
     "sequencer_private_key": STANDARD_ACCOUNTS["sequencer"]["private_key"],
     "sequencer_address": STANDARD_ACCOUNTS["sequencer"]["address"],
     "validator_private_key": STANDARD_ACCOUNTS["validator"]["private_key"],
     "validator_address": STANDARD_ACCOUNTS["validator"]["address"],
+    
+    # Node configuration
     "simple_mode": True,
     "validator_count": 1,
     "enable_bridge": True,
-    "enable_explorer": True,
-    "enable_timeboost": False,
+    "enable_explorer": False,
+    # "enable_timeboost": False,
+    
+    # Funding configuration
+    "standard_account_balance_l1": "100",  # ETH balance for standard accounts on L1
+    "standard_account_balance_l2": "100",  # ETH balance for standard accounts on L2
     "pre_fund_accounts": ["funnel", "sequencer", "validator", "l2owner"],
-    "prefund_addresses": [],  # **Added** – allow user-specified prefund addresses
+    "prefund_addresses": [],  # Additional addresses to fund
+    
+    # Docker images and versions
     "nitro_image": "offchainlabs/nitro-node:v3.5.5-90ee45c",
     "nitro_contracts_branch": "v2.1.1-beta.0",
     "token_bridge_branch": "v1.2.2",
+    "blockscout_image": "offchainlabs/blockscout:v1.1.0-0e716c8",
+    "postgres_image": "postgres:13.6",
 }
 
 def process_config(args):
@@ -102,7 +137,7 @@ def process_config(args):
                 elif str(value).lower() == "anytrust":
                     config_dict["rollup_mode"] = False
                 else:
-                    config_dict["rollup_mode"] = True  # treat any other value as "rollup"
+                    config_dict["rollup_mode"] = True
             elif key in config_dict:
                 config_dict[key] = value
             else:
@@ -110,11 +145,11 @@ def process_config(args):
         
         # Validate key/address consistency after merging
         if "owner_private_key" in orbit_config and "owner_address" not in orbit_config:
-            fail("owner_address must be provided if owner_private_key is overridden, or else the chain owner address will not match the new key.")
+            fail("owner_address must be provided if owner_private_key is overridden")
         if "sequencer_private_key" in orbit_config and "sequencer_address" not in orbit_config:
-            fail("sequencer_address must be provided if sequencer_private_key is overridden.")
+            fail("sequencer_address must be provided if sequencer_private_key is overridden")
         if "validator_private_key" in orbit_config and "validator_address" not in orbit_config:
-            fail("validator_address must be provided if validator_private_key is overridden.")
+            fail("validator_address must be provided if validator_private_key is overridden")
     
     # Validate configuration
     validate_config(config_dict)
@@ -128,7 +163,7 @@ def process_config(args):
         config_dict["owner_private_key"] = STANDARD_ACCOUNTS["l2owner"]["private_key"]
         config_dict["owner_address"] = STANDARD_ACCOUNTS["l2owner"]["address"]
     
-    return struct(**config_dict)
+    return config_dict
 
 def validate_config(config):
     """
@@ -158,7 +193,7 @@ def validate_config(config):
     
     # Enhanced mode validation
     if not config["rollup_mode"]:
-        print("WARNING: AnyTrust mode selected. Make sure a data availability service is configured. (Local DAS support is not yet implemented.)")
+        print("WARNING: AnyTrust mode selected. Make sure a data availability service is configured.")
         if config.get("anytrust_config") == None:
             fail("AnyTrust mode requires an 'anytrust_config' with DAS settings.")
     
@@ -174,30 +209,82 @@ def generate_jwt_secret():
     # Using a fixed value for deterministic development environment
     return "0x" + ("0" * 64)
 
+def get_all_prefunded_accounts(config):
+    """
+    Get a consolidated list of all accounts that should be prefunded.
+    Returns a dict with account info including balances for L1 and L2.
+    """
+    accounts = {}
+    
+    # Add standard accounts
+    for acc_name in config["pre_fund_accounts"]:
+        if acc_name in STANDARD_ACCOUNTS:
+            acc_info = STANDARD_ACCOUNTS[acc_name]
+            # Funnel account needs extra balance to fund all other accounts
+            if acc_name == "funnel":
+                balance_l1 = "10000"  # Extra balance for funding other accounts
+                balance_l2 = "10000"
+            else:
+                balance_l1 = config["standard_account_balance_l1"]
+                balance_l2 = config["standard_account_balance_l2"]
+            
+            accounts[acc_info["address"]] = {
+                "name": acc_name,
+                "private_key": acc_info["private_key"],
+                "balance_l1": balance_l1,
+                "balance_l2": balance_l2,
+                "description": acc_info["description"]
+            }
+    
+    # Always fund the deployer account with extra balance
+    deployer_address = "0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E"
+    if deployer_address not in accounts:
+        accounts[deployer_address] = {
+            "name": "deployer",
+            "private_key": STANDARD_ACCOUNTS["funnel"]["private_key"],
+            "balance_l1": "10000",  # Large balance for deployments
+            "balance_l2": "10000",
+            "description": "Deployment account"
+        }
+    
+    # Add default prefunded accounts
+    for acc in DEFAULT_PREFUNDED_ACCOUNTS:
+        if acc["address"] not in accounts:
+            accounts[acc["address"]] = {
+                "name": "dev_account",
+                "private_key": None,
+                "balance_l1": acc["balance_eth"],
+                "balance_l2": acc["balance_eth"],
+                "description": acc["description"]
+            }
+    
+    # Add any custom prefund addresses
+    if config["prefund_addresses"]:
+        for addr in config["prefund_addresses"]:
+            if addr.startswith("0x") and len(addr) == 42:
+                if addr not in accounts:
+                    accounts[addr] = {
+                        "name": "custom",
+                        "private_key": None,
+                        "balance_l1": "100",
+                        "balance_l2": "100",
+                        "description": "Custom funded address"
+                    }
+            else:
+                print("WARNING: Invalid address format '{}'; skipping prefund.".format(addr))
+    
+    return accounts
+
 def get_prefunded_accounts_json(config):
     """
     Generate JSON for prefunding accounts in L1 genesis.
     """
     accounts = {}
+    all_prefunded = get_all_prefunded_accounts(config)
     
-    # Fund standard accounts
-    for acc_name in config.pre_fund_accounts:
-        if acc_name in STANDARD_ACCOUNTS:
-            accounts[STANDARD_ACCOUNTS[acc_name]["address"]] = {
-                "balance": "1000000000000000000000"  # 1000 ETH
-            }
-    
-    # Always fund the deployer account
-    accounts["0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E"] = {
-        "balance": "1000000000000000000000000000000000"  # Large balance
-    }
-    
-    # Add any custom prefund addresses
-    if config.prefund_addresses:
-        for addr in config.prefund_addresses:
-            if addr.startswith("0x") and len(addr) == 42:
-                accounts[addr] = {"balance": "100000000000000000000"}  # 100 ETH
-            else:
-                print("WARNING: Invalid address format '{}'; skipping prefund.".format(addr))
+    for addr, info in all_prefunded.items():
+        # Convert ETH to wei (multiply by 10^18)
+        balance_wei = str(int(float(info["balance_l1"]) * 1000000000000000000))
+        accounts[addr] = {"balance": balance_wei}
     
     return json.encode(accounts)
