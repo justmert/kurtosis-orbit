@@ -11,7 +11,7 @@ Kurtosis-Orbit is a comprehensive deployment tool that allows you to spin up com
 - **🔑 Pre-funded accounts** - Development accounts with ETH ready for immediate testing
 - **🌉 Bridge integration** - Built-in token bridge between L1 and L2
 - **📊 Monitoring ready** - Optional Blockscout explorer for transaction monitoring
-- **🐳 Docker & Kubernetes** - Run locally with Docker or scale on Kubernetes
+- **🐳 Docker** - Run locally with Docker
 
 ## 🚀 Quick Start
 
@@ -58,17 +58,6 @@ After deployment, you'll have a complete Arbitrum Orbit environment including:
 - **Pre-funded accounts** with 1000 ETH each
 - **Optional block explorer** (Blockscout)
 
-## 🔑 Development Accounts
-
-Ready-to-use accounts for testing:
-
-| Account | Address | Private Key | Purpose |
-|---------|---------|-------------|---------|
-| Funnel | `0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E` | `b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659` | General testing |
-| Sequencer | `0xe2148eE53c0755215Df69b2616E552154EdC584f` | `cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65` | Sequencer operations |
-
-> ⚠️ **Warning**: These are development keys only. Never use for real value!
-
 ## 📖 Documentation
 
 - **[Getting Started Guide](./docs/getting-started.md)** - Step-by-step deployment walkthrough
@@ -77,17 +66,6 @@ Ready-to-use accounts for testing:
 - **[Account Management](./docs/accounts.md)** - Working with development accounts
 - **[Architecture Overview](./docs/architecture.md)** - How Kurtosis-Orbit works
 - **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
-
-## 🛠️ Use Cases
-
-- **Arbitrum Development** - Test your dApps on a local Orbit chain
-- **Integration Testing** - Validate cross-chain functionality
-- **Research & Education** - Learn about Arbitrum rollup architecture
-- **Protocol Experimentation** - Try different rollup configurations
-
-## 🤝 Contributing
-
-We welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
 
 ## 📄 License
 
