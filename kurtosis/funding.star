@@ -17,17 +17,24 @@ def deploy_l2_funding(plan, config, l2_info):
     )
     
     # Deploy the funding service
+    # Deploy the funding service
     funding_service = plan.add_service(
         name="l2-funding",
         config=ServiceConfig(
             image="node:20-bookworm-slim",
-            cmd=["sh", "-c", "cd /workspace && yarn install && tail -f /dev/null"],
+            cmd=[
+                "sh", "-c", 
+                "cd /workspace && " +
+                "npm cache clean --force && " +
+                "rm -rf node_modules package-lock.json && " +
+                "npm install && " +
+                "tail -f /dev/null"
+            ],
             files={
                 "/workspace": funding_scripts,
             },
         ),
-    )
-    
+    )    
     # Wait for service to be ready and yarn install to complete
     plan.wait(
         service_name="l2-funding",

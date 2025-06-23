@@ -102,7 +102,7 @@ DEFAULT_CONFIG = {
     "simple_mode": True,
     "validator_count": 1,
     "enable_bridge": True,
-    "enable_explorer": False,
+    "enable_explorer": True,
     # "enable_timeboost": False,
     
     # Funding configuration

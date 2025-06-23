@@ -10,8 +10,7 @@
     "interact-contract": "node scripts/interact-contract.js", 
     "bridge-eth": "node scripts/bridge-eth.js",
     "fund-accounts": "node scripts/fund-accounts.js",
-    "generate-accounts": "node scripts/generate-accounts.js",
-    "test-all": "npm run setup && npm run check-balances && npm run deploy-contract && npm run interact-contract"
+    "generate-accounts": "node scripts/generate-accounts.js"
   },
   "dependencies": {
     "kurtosis-sdk": "1.7.1",
