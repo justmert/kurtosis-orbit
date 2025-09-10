@@ -20,9 +20,15 @@ def run(plan, args={}):
     funding_module = import_module("./funding.star")
     explorer_module = import_module("./explorer.star")
     utils_module = import_module("./utils.star")
+    analytics_module = import_module("./analytics.star")
     
     # Process and validate configuration
     config = config_module.process_config(args)
+    
+    # Track deployment start (if analytics enabled)
+    if analytics_module.is_analytics_enabled(config):
+        analytics_module.track_deployment_start(plan, config)
+        analytics_module.track_download(plan, "kurtosis", "github", "latest")
     
     # Display deployment banner
     utils_module.print_deployment_banner(plan, config)
@@ -84,5 +90,9 @@ def run(plan, args={}):
     
     # Display connection information
     utils_module.display_connection_info(plan, output)
+    
+    # Track successful deployment (if analytics enabled)
+    if analytics_module.is_analytics_enabled(config):
+        analytics_module.track_deployment_success(plan, config)
     
     return output
