@@ -28,7 +28,6 @@ def run(plan, args={}):
     # Track deployment start (if analytics enabled)
     if analytics_module.is_analytics_enabled(config):
         analytics_module.track_deployment_start(plan, config)
-        analytics_module.track_download(plan, "kurtosis", "github", "latest")
     
     # Display deployment banner
     utils_module.print_deployment_banner(plan, config)
