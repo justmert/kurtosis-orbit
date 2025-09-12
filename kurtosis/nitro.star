@@ -311,7 +311,8 @@ def deploy_validation_node(plan, config, l1_info, rollup_info):
         field="code", 
         assertion="==", 
         target_value=0, 
-        timeout="30s"
+        timeout="30s",
+        interval="2s"
     )
     
     plan.print("✅ Validation node is running!")

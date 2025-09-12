@@ -159,6 +159,7 @@ def deploy_rollup_contracts(plan, config, l1_info):
         assertion="==",
         target_value=0,
         timeout="10m",
+        interval="5s"
     )
     
     # Store deployment artifacts

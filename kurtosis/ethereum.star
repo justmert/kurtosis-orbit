@@ -2,7 +2,7 @@
 Ethereum L1 deployment using ethereum-package.
 """
 
-ethereum_pkg = import_module("github.com/ethpandaops/ethereum-package/main.star@5.0.1")
+ethereum_pkg = import_module("github.com/ethpandaops/ethereum-package/main.star@0e1548a638fde573fa77840441c4a2cf149ef3d6")
 config_module = import_module("./config.star")
 
 def deploy_ethereum_l1(plan, config):
@@ -14,23 +14,26 @@ def deploy_ethereum_l1(plan, config):
     # Get prefunded accounts
     prefunded_accounts_json = config_module.get_prefunded_accounts_json(config)
     
-    # Configure ethereum-package
+    # Configure ethereum-package with stable setup for development
     ethereum_config = {
         "participants": [
             {
                 "el_type": "geth",
-                "el_image": "ethereum/client-go:stable",
+                "el_image": "ethereum/client-go:latest",
+                "cl_type": "lighthouse", 
+                "cl_image": "ethpandaops/lighthouse:unstable-a93cafe",
             }
         ],
         "network_params": {
             "network": "kurtosis",
             "network_id": str(config["l1_chain_id"]),
-            "seconds_per_slot": 3,
-            "genesis_delay": 10,
+            "seconds_per_slot": 12,
+            "genesis_delay": 30,  # Increased delay for better coordination
             "preset": "minimal",
             "prefunded_accounts": prefunded_accounts_json,
         },
         "additional_services": [],
+        "global_log_level": "info",
     }
     
     # Deploy Ethereum
@@ -52,6 +55,7 @@ def deploy_ethereum_l1(plan, config):
         assertion="==",
         target_value=200,
         timeout="60s",
+        interval="2s",
     )
     
     plan.print("✅ Ethereum L1 is ready!")

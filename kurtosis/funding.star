@@ -42,7 +42,8 @@ def deploy_l2_funding(plan, config, l2_info):
         field="code",
         assertion="==",
         target_value=0,
-        timeout="2m"
+        timeout="2m",
+        interval="3s"
     )
     
     plan.print("✅ L2 funding service deployed!")

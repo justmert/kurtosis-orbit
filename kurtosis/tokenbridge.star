@@ -47,6 +47,7 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
         assertion="==",
         target_value=0,
         timeout="10m",  # Token bridge deployment can take time
+        interval="5s"
     )
     
     # Copy the network configuration files
