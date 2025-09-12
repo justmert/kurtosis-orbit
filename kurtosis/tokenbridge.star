@@ -22,8 +22,21 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
             cmd=[
                 "sh", "-c", 
                 "echo 'Starting token bridge deployment...' && " +
-                "yarn deploy:local:token-bridge && " +
-                "echo 'Token bridge deployment completed' &&" +
+                "echo 'Environment variables:' && " +
+                "env | grep -E '(PARENT_RPC|CHILD_RPC|ROLLUP_ADDRESS)' && " +
+                "echo 'Running yarn deploy:local:token-bridge...' && " +
+                "if ! yarn deploy:local:token-bridge; then " +
+                "    echo 'Token bridge deployment failed!' && " +
+                "    exit 1; " +
+                "fi && " +
+                "if [ ! -f /workspace/network.json ]; then " +
+                "    echo 'network.json not found after deployment!' && " +
+                "    ls -la /workspace/ && " +
+                "    exit 1; " +
+                "fi && " +
+                "echo 'Token bridge deployment completed successfully' && " +
+                "echo 'Created network.json:' && " +
+                "cat /workspace/network.json && " +
                 "tail -f /dev/null" 
             ],
             env_vars={
@@ -41,13 +54,13 @@ def deploy_token_bridge(plan, config, l1_info, nodes_info, rollup_info):
     plan.wait(
         service_name="token-bridge-deployer",
         recipe=ExecRecipe(
-            command=["sh", "-c", "test -f /workspace/network.json"]
+            command=["sh", "-c", "if [ -f /workspace/network.json ]; then echo 'Success: network.json found'; exit 0; else echo 'network.json not found, listing workspace:'; ls -la /workspace/; exit 1; fi"]
         ),
         field="code",
         assertion="==",
         target_value=0,
-        timeout="10m",  # Token bridge deployment can take time
-        interval="5s"
+        timeout="15m",  # Increased timeout for token bridge deployment
+        interval="10s"  # Increased interval to reduce noise
     )
     
     # Copy the network configuration files

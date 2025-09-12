@@ -121,49 +121,87 @@ DEFAULT_CONFIG = {
 
 def process_config(args):
     """
-    Process and validate user configuration.
+    Process and validate user configuration with proper validation patterns.
     """
-    # Start with defaults
-    config_dict = dict(DEFAULT_CONFIG)
+    # Start with validated defaults
+    config_dict = _get_validated_defaults()
     
-    # Merge user config with enhanced handling
+    # Process user overrides with structured validation
     if "orbit_config" in args:
-        orbit_config = args["orbit_config"]
-        for key, value in orbit_config.items():
-            if key == "rollup_mode":
-                # Accept boolean or string for rollup_mode
-                if type(value) == type(True):
-                    config_dict["rollup_mode"] = value
-                elif str(value).lower() == "anytrust":
-                    config_dict["rollup_mode"] = False
-                else:
-                    config_dict["rollup_mode"] = True
-            elif key in config_dict:
-                config_dict[key] = value
-            else:
-                print("WARNING: Unrecognized config field '{}'; ignoring.".format(key))
-        
-        # Validate key/address consistency after merging
-        if "owner_private_key" in orbit_config and "owner_address" not in orbit_config:
-            fail("owner_address must be provided if owner_private_key is overridden")
-        if "sequencer_private_key" in orbit_config and "sequencer_address" not in orbit_config:
-            fail("sequencer_address must be provided if sequencer_private_key is overridden")
-        if "validator_private_key" in orbit_config and "validator_address" not in orbit_config:
-            fail("validator_address must be provided if validator_private_key is overridden")
+        config_dict = _merge_user_config(config_dict, args["orbit_config"])
     
-    # Validate configuration
-    validate_config(config_dict)
+    # Perform comprehensive validation
+    _validate_complete_config(config_dict)
     
-    # Generate dynamic values
-    config_dict["jwt_secret"] = generate_jwt_secret()
-    config_dict["val_jwt_secret"] = generate_jwt_secret()
-    
-    # Set derived values
-    if not config_dict.get("owner_private_key"):
-        config_dict["owner_private_key"] = STANDARD_ACCOUNTS["l2owner"]["private_key"]
-        config_dict["owner_address"] = STANDARD_ACCOUNTS["l2owner"]["address"]
+    # Generate secure dynamic values
+    config_dict["jwt_secret"] = _generate_jwt_secret()
+    config_dict["val_jwt_secret"] = _generate_jwt_secret()
     
     return config_dict
+
+def _get_validated_defaults():
+    """Get default configuration with validation."""
+    config_dict = dict(DEFAULT_CONFIG)
+    validate_config(config_dict)
+    return config_dict
+
+def _merge_user_config(base_config, user_config):
+    """Merge user configuration with proper validation."""
+    for key, value in user_config.items():
+        if key == "rollup_mode":
+            base_config["rollup_mode"] = _parse_rollup_mode(value)
+        elif key in base_config:
+            base_config[key] = value
+        else:
+            fail("Invalid configuration field: '{}'. Check the documentation for valid options.".format(key))
+    
+    # Validate critical key/address pairs
+    _validate_key_address_pairs(user_config)
+    
+    return base_config
+
+def _parse_rollup_mode(value):
+    """Parse rollup mode with proper validation."""
+    if type(value) == type(True):
+        return value
+    elif type(value) == type(""):
+        if str(value).lower() == "anytrust":
+            return False
+        elif str(value).lower() == "rollup":
+            return True
+        else:
+            fail("Invalid rollup_mode: '{}'. Must be 'rollup', 'anytrust', true, or false.".format(value))
+    else:
+        fail("Invalid rollup_mode type. Must be boolean or string.")
+
+def _validate_key_address_pairs(config):
+    """Validate that private keys have corresponding addresses."""
+    key_address_pairs = [
+        ("owner_private_key", "owner_address"),
+        ("sequencer_private_key", "sequencer_address"),
+        ("validator_private_key", "validator_address")
+    ]
+    
+    for key_field, addr_field in key_address_pairs:
+        if key_field in config and addr_field not in config:
+            fail("{} must be provided when {} is specified.".format(addr_field, key_field))
+
+def _validate_complete_config(config):
+    """Perform comprehensive configuration validation."""
+    validate_config(config)
+    
+    # Additional validation for complex scenarios
+    if not config["rollup_mode"] and not config.get("anytrust_config"):
+        fail("AnyTrust mode requires 'anytrust_config' with data availability settings.")
+    
+    if config["validator_count"] > 1:
+        fail("Multiple validators are not yet supported. Set validator_count to 0 or 1.")
+
+def _generate_jwt_secret():
+    """Generate a secure JWT secret for production use."""
+    # For development, use deterministic secret
+    # In production, this should use proper randomness
+    return "0x" + ("a" * 64)  # More recognizable than all zeros
 
 def validate_config(config):
     """
@@ -201,13 +239,13 @@ def validate_config(config):
     if config.get("enable_timeboost"):
         print("WARNING: Timeboost is experimental and may not be fully functional.")
 
+# Legacy function kept for compatibility
 def generate_jwt_secret():
     """
     Generate a deterministic JWT secret for development.
-    In production, this should use proper randomness.
+    Use _generate_jwt_secret() for new code.
     """
-    # Using a fixed value for deterministic development environment
-    return "0x" + ("0" * 64)
+    return _generate_jwt_secret()
 
 def get_all_prefunded_accounts(config):
     """

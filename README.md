@@ -68,26 +68,6 @@ After deployment, you'll have a complete Arbitrum Orbit environment including:
 - **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
 - **[Analytics System](./analytics/README.md)** - Download tracking and usage statistics
 
-## 📊 Analytics & Usage Tracking
-
-Kurtosis-Orbit includes an optional analytics system that helps us understand how the project is being used and improve the user experience. The analytics system tracks:
-
-- **Download counts** from various sources (GitHub, Kurtosis registry, etc.)
-- **Deployment success rates** and common failure patterns
-- **Usage patterns** to identify popular configurations
-- **Performance metrics** to optimize deployment times
-
-### Privacy First
-
-- All tracking is **completely anonymous**
-- IP addresses are **hashed with salt** for privacy
-- **No personal information** is collected or stored
-- Users can **opt-out** at any time via configuration
-
-### View Live Analytics
-
-Check out the live analytics dashboard at: [analytics.kurtosis-orbit.dev](https://analytics.kurtosis-orbit.dev)
-
 ### Disable Analytics
 
 To disable analytics tracking, add this to your configuration:

@@ -66,4 +66,5 @@ def deploy_ethereum_l1(plan, config):
         "chain_id": config["l1_chain_id"],
         "network_id": ethereum_result.network_id,
         "prefunded_accounts": ethereum_result.pre_funded_accounts,
+        "service_name": el_client.service_name,
     }

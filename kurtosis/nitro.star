@@ -6,72 +6,44 @@ config_module = import_module("./config.star")
 
 def deploy_nitro_nodes(plan, config, l1_info, rollup_info):
     """
-    Deploy Arbitrum Nitro nodes (sequencer and validators).
+    Deploy Arbitrum Nitro nodes with proper orchestration patterns.
     """
-    plan.print("Deploying Nitro nodes...")
+    # Validate deployment dependencies
+    _validate_rollup_artifacts(rollup_info)
     
-    # Validate required artifacts
-    if "artifacts" not in rollup_info or "chain_info" not in rollup_info["artifacts"]:
-        fail("Error: Missing chain_info artifact in rollup_info. Deployment may have failed.")
-
-    plan.print("Using chain_info from rollup deployment")
-
-    # Deploy validation node first (if validators are enabled)
-    validation_node = None
+    # Deploy services in proper dependency order
+    services = {}
+    
+    # Step 1: Deploy validation node if validators are enabled
     if config["validator_count"] > 0:
-        validation_node = deploy_validation_node(plan, config, l1_info, rollup_info)
+        services["validation_node"] = _deploy_validation_node(plan, config, l1_info, rollup_info)
     
-    # Deploy sequencer
-    sequencer = deploy_sequencer_node(plan, config, l1_info, rollup_info)
+    # Step 2: Deploy sequencer
+    services["sequencer"] = _deploy_sequencer_node(plan, config, l1_info, rollup_info)
     
-    # ✅ CRITICAL: Wait for sequencer to be fully operational before starting validators
-    plan.print("Waiting for sequencer to be fully ready before starting validators...")
-    plan.wait(
-        service_name="orbit-sequencer",
-        recipe=PostHttpRequestRecipe(
-            port_id="rpc",
-            endpoint="",
-            content_type="application/json",
-            body='{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
-        ),
-        field="code",
-        assertion="==",
-        target_value=200,
-        timeout="5m",
-        interval="5s"
-    )
-  
-    # Now deploy validators one by one (not in parallel)
+    # Step 3: Deploy validators after sequencer is ready
+    services["validators"] = _deploy_validator_nodes(plan, config, l1_info, rollup_info, services.get("validation_node"))
+    
+    return services
+
+def _validate_rollup_artifacts(rollup_info):
+    """Validate that rollup deployment artifacts are available."""
+    if "artifacts" not in rollup_info or "chain_info" not in rollup_info["artifacts"]:
+        fail("Missing chain_info artifact. Ensure rollup deployment completed successfully.")
+
+def _deploy_validator_nodes(plan, config, l1_info, rollup_info, validation_node):
+    """Deploy validator nodes with proper sequencing."""
     validators = []
+    
     for i in range(config["validator_count"]):
-        plan.print("Starting validator {} (waiting for previous to be ready)...".format(i))
-        validator = deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, i)
-        
-        # ✅ Wait for this validator to be ready before starting the next
-        if i < config["validator_count"] - 1:  # Don't wait after the last one
-            plan.wait(
-                service_name="orbit-validator-{}".format(i),
-                recipe=PostHttpRequestRecipe(
-                    port_id="rpc",
-                    endpoint="",
-                    content_type="application/json",
-                    body='{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
-                ),
-                field="code",
-                assertion="==",
-                target_value=200,
-                timeout="3m"
-            )
-        
+        plan.print("Deploying validator node {}...".format(i))
+        validator = _deploy_single_validator(plan, config, l1_info, rollup_info, validation_node, i)
         validators.append(validator)
     
-    return {
-        "sequencer": sequencer,
-        "validators": validators,
-        "validation_node": validation_node,
-    }
+    return validators
+    
 
-def deploy_sequencer_node(plan, config, l1_info, rollup_info):
+def _deploy_sequencer_node(plan, config, l1_info, rollup_info):
     """
     Deploy Nitro sequencer node.
     """
@@ -210,30 +182,31 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
                     port_id="rpc",
                     endpoint="",
                     content_type="application/json",
-                    body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+                    body='{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
                 ),
                 field="code",
                 assertion="==",
                 target_value=200,
-                timeout="10m",    # ✅ Longer timeout
-                interval="10s",   # ✅ Less frequent checks
-
+                timeout="8m",
+                interval="15s"
             ),
         ),
     )
     
+    # Additional validation for sequencer readiness
     plan.wait(
         service_name="orbit-sequencer",
         recipe=PostHttpRequestRecipe(
             port_id="rpc",
             endpoint="",
             content_type="application/json",
-            body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}',
+            body='{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}'
         ),
         field="code",
         assertion="==",
         target_value=200,
-        timeout="2m",
+        timeout="3m",
+        interval="10s"
     )
     plan.print("✅ Sequencer node is running!")
     
@@ -244,7 +217,7 @@ def deploy_sequencer_node(plan, config, l1_info, rollup_info):
         "feed_url": "ws://{}:{}".format(sequencer_service.hostname, sequencer_service.ports["feed"].number),
     }
 
-def deploy_validation_node(plan, config, l1_info, rollup_info):
+def _deploy_validation_node(plan, config, l1_info, rollup_info):
     """
     Deploy nitro-val validation node.
     """
@@ -323,7 +296,7 @@ def deploy_validation_node(plan, config, l1_info, rollup_info):
         "jwt": config["val_jwt_secret"],
     }
 
-def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validation_node, index):
+def _deploy_single_validator(plan, config, l1_info, rollup_info, validation_node, index):
     """
     Deploy Nitro validator node.
     """
@@ -454,13 +427,13 @@ def deploy_validator_node(plan, config, l1_info, rollup_info, sequencer, validat
                     port_id="rpc",
                     endpoint="",
                     content_type="application/json",
-                    body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+                    body='{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
                 ),
                 field="code",
                 assertion="==",
                 target_value=200,
-                timeout="10m",    # ✅ Longer timeout
-                interval="10s",   # ✅ Less frequent checks
+                timeout="8m",
+                interval="15s"
             ),
         ),
     )

@@ -11,7 +11,7 @@ def run(plan, args={}):
         plan: Kurtosis execution plan
         args: Configuration parameters
     """
-    # Import modules
+    # Import modules with service patterns
     config_module = import_module("./config.star")
     ethereum_module = import_module("./ethereum.star")
     rollup_module = import_module("./rollup.star")
@@ -20,17 +20,17 @@ def run(plan, args={}):
     funding_module = import_module("./funding.star")
     explorer_module = import_module("./explorer.star")
     utils_module = import_module("./utils.star")
-    analytics_module = import_module("./analytics.star")
+    service_patterns = import_module("./service_patterns.star")
+    # Skip analytics module import as requested
     
     # Process and validate configuration
     config = config_module.process_config(args)
     
-    # Track deployment start (if analytics enabled)
-    if analytics_module.is_analytics_enabled(config):
-        analytics_module.track_deployment_start(plan, config)
-    
     # Display deployment banner
     utils_module.print_deployment_banner(plan, config)
+    
+    # Validate deployment prerequisites  
+    _validate_deployment_prerequisites(plan, config)
     
     # Phase 1: Deploy Ethereum L1
     plan.print("🚀 Phase 1/6: Deploying Ethereum L1 chain...")
@@ -90,8 +90,31 @@ def run(plan, args={}):
     # Display connection information
     utils_module.display_connection_info(plan, output)
     
-    # Track successful deployment (if analytics enabled)
-    if analytics_module.is_analytics_enabled(config):
-        analytics_module.track_deployment_success(plan, config)
+    # Validate final deployment state
+    _validate_deployment_completion(plan, output)
     
     return output
+
+def _validate_deployment_prerequisites(plan, config):
+    """Validate deployment prerequisites."""
+    plan.print("Validating deployment prerequisites...")
+    
+    # Validate configuration completeness
+    required_fields = ["chain_name", "chain_id", "owner_address", "sequencer_address"]
+    for field in required_fields:
+        if not config.get(field):
+            fail("Required configuration field '{}' is missing".format(field))
+    
+    plan.print("✅ Prerequisites validated")
+
+def _validate_deployment_completion(plan, deployment_info):
+    """Validate that deployment completed successfully."""
+    plan.print("Validating deployment completion...")
+    
+    # Check that required components are present
+    required_components = ["ethereum_l1", "arbitrum_l2", "rollup_contracts"]
+    for component in required_components:
+        if component not in deployment_info or not deployment_info[component]:
+            fail("Deployment component '{}' is missing or invalid".format(component))
+    
+    plan.print("✅ Deployment validation completed")
